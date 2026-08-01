@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { LatticeMark } from "@/components/trellis/Lattice";
 import { EditorialInterventionFlow } from "@/components/trellis/EditorialInterventionFlow";
 import { LatticeDivider } from "@/components/trellis/LatticeDivider";
+import { MorphingPersona } from "@/components/trellis/MorphingPersona";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import { motion } from "motion/react";
 
@@ -61,7 +62,7 @@ function Landing() {
       </header>
 
       {/* Hero — brand first, one composition */}
-      <section className="relative z-10 mx-auto max-w-6xl px-6 pt-16 pb-24 sm:pt-24 sm:pb-32">
+      <section className="relative z-10 mx-auto grid max-w-6xl grid-cols-1 items-center gap-14 px-6 pt-16 pb-24 sm:pt-24 sm:pb-32 lg:grid-cols-[1.05fr_0.95fr] lg:gap-20">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
@@ -103,6 +104,15 @@ function Landing() {
               <ArrowRight className="h-3.5 w-3.5 opacity-40 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
             </Link>
           </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 28 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.95, delay: 0.15, ease: flagshipEase }}
+          className="mx-auto w-full max-w-[17rem] lg:max-w-[21.5rem]"
+        >
+          <MorphingPersona />
         </motion.div>
       </section>
 
