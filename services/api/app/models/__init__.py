@@ -6,6 +6,7 @@ from app.models.calendar_event import CalendarEventModel
 from app.models.catalog import GrowthStoryModel, MentorModel, ToolModel
 from app.models.evidence_event import EvidenceEventModel
 from app.models.identity_evolution import IdentityEvolutionProposalModel
+from app.models.integration_connection import IntegrationConnection
 from app.models.intervention import InterventionModel
 from app.models.intervention_budget import InterventionBudgetModel
 from app.models.kpi_snapshot import KPISnapshotModel
@@ -34,4 +35,5 @@ __all__ = [
     "AgentRunModel",
     "IdentityEvolutionProposalModel",
     "CalendarEventModel",
+    "IntegrationConnection",
 ]

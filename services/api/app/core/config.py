@@ -50,7 +50,20 @@ class Settings(BaseSettings):
     # fake so tests/local dev never require a live Tavily key.
     search_provider: Literal["fake", "tavily"] = "fake"
     tavily_api_key: str | None = None
-    tavily_timeout_seconds: float = 1.5
+    # Token encryption key for OAuth credentials (Fernet symmetric key)
+    token_encryption_key: str | None = None
+
+    # Google OAuth settings
+    google_oauth_client_id: str | None = None
+    google_oauth_client_secret: str | None = None
+    google_oauth_redirect_uri: str = "http://localhost:8002/api/v1/integrations/google-calendar/callback"
+
+    # GitHub OAuth settings
+    github_oauth_client_id: str | None = None
+    github_oauth_client_secret: str | None = None
+    github_oauth_redirect_uri: str = "http://localhost:8002/api/v1/integrations/github/callback"
+
+
 
 
 def get_settings() -> Settings:
