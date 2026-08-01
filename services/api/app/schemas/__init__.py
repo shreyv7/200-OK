@@ -4,6 +4,7 @@ Import surface for AIA/AIS: `from app.schemas import EvidenceEvent, DeclaredSelf
 """
 
 from app.schemas.bottleneck import BottleneckPacket
+from app.schemas.catalog import GrowthStorySchema, MentorSchema, ToolSchema
 from app.schemas.dashboard import DashboardSummary
 from app.schemas.decision import DecisionPacket
 from app.schemas.evidence import EvidenceEvent, EvidenceIngestRequest, RawMCPPayload
@@ -20,6 +21,9 @@ from app.schemas.stack import IdentityStack, InterventionVariant, StackElement, 
 
 __all__ = [
     "BottleneckPacket",
+    "GrowthStorySchema",
+    "ToolSchema",
+    "MentorSchema",
     "DashboardSummary",
     "DecisionPacket",
     "EvidenceEvent",

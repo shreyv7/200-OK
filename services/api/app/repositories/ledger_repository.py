@@ -78,6 +78,21 @@ def get_lens_weights(db: Session, user_id: str) -> dict[str, float]:
     return weights
 
 
+def list_adaptations(db: Session, user_id: str) -> list[LedgerEntry]:
+    """Entries where System Unlearning fired or a lens weight was adjusted —
+    the "adaptations" view of the full ledger history (milestones.md M6)."""
+    stmt = (
+        select(LedgerEntryModel)
+        .where(
+            LedgerEntryModel.user_id == user_id,
+            (LedgerEntryModel.unlearning_triggered.is_(True))
+            | (LedgerEntryModel.lens_weight_adjustment.is_not(None)),
+        )
+        .order_by(LedgerEntryModel.timestamp.desc())
+    )
+    return [_to_schema(r) for r in db.scalars(stmt)]
+
+
 def count_recent_dismissals(
     db: Session, hypothesis_family: str, window_days: int
 ) -> int:

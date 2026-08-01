@@ -24,6 +24,7 @@ from app.schemas.evidence import RawMCPPayload
 from app.schemas.identity import DeclaredSelf, IdentityAttribute, IdentityMarker
 from app.services.curation import stack_orchestration
 from app.services.evidence import service as evidence_service
+from app.workers.seed_catalog import seed_catalog
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("seed")
@@ -193,14 +194,18 @@ def main() -> None:
         inserted = _generate_history(session, user.id)
         prepared = _ensure_prepared_intervention(session, user.id)
         dismissals = _ensure_demo_dismissal_history(session, user.id)
+        stories, tools, mentors = seed_catalog(session)
         logger.info(
             "Seed complete: user=%s twin_version=%d inserted_events=%d "
-            "prepared_stack=%s seeded_dismissals=%d",
+            "prepared_stack=%s seeded_dismissals=%d catalog=%d/%d/%d",
             user.id,
             twin.version,
             inserted,
             prepared,
             dismissals,
+            stories,
+            tools,
+            mentors,
         )
     finally:
         session.close()
