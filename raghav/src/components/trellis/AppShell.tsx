@@ -2,7 +2,7 @@ import { UserButton, useUser } from "@clerk/react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "motion/react";
-import { FileText, LayoutDashboard, Rss, ScrollText, Settings } from "lucide-react";
+import { FileText, LayoutDashboard, Rss, ScrollText, Settings, Users } from "lucide-react";
 import { LatticeMark } from "./Lattice";
 import { CapacitySlider } from "./CapacitySlider";
 import { SimulatorDrawer } from "./SimulatorDrawer";
@@ -10,6 +10,7 @@ import { useTrellis } from "@/lib/trellis/store";
 
 const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/mentors", label: "Experts & Guides", icon: Users },
   { to: "/feed", label: "Growth Feed", icon: Rss },
   { to: "/ledger", label: "Trust Ledger", icon: ScrollText },
   { to: "/report", label: "Weekly Report", icon: FileText },

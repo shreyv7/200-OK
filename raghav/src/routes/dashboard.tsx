@@ -84,6 +84,34 @@ function Dashboard() {
           </button>
         </header>
 
+        {/* Subtle Mentor Unlock Progress Strip */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-border/80 bg-card/80 px-5 py-3.5 font-mono text-xs shadow-sm">
+          <div className="flex items-center gap-3">
+            <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-signal/15 text-signal font-bold">
+              🎓
+            </span>
+            <div>
+              <span className="font-semibold text-foreground">Mentor Readiness Progress: </span>
+              <span className="text-signal font-bold">78% Unlocked</span>
+              <span className="text-muted-foreground ml-2 hidden sm:inline">
+                (Maintain 80%+ alignment for 7 more days to unlock Mentor status)
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="h-2 w-28 rounded-full bg-secondary overflow-hidden">
+              <div className="h-full rounded-full bg-signal w-[78%]" />
+            </div>
+            <Link
+              to="/mentors"
+              className="text-[11px] font-semibold text-signal hover:text-foreground underline underline-offset-2 transition-colors shrink-0"
+            >
+              Explore Guides &rarr;
+            </Link>
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { label: "Create", value: `${createPts}%`, sub: "action / ship" },

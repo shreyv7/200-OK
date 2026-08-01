@@ -14,6 +14,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as LedgerRouteImport } from './routes/ledger'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MentorsRouteImport } from './routes/mentors'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as ReportRouteImport } from './routes/report'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -44,6 +45,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MentorsRoute = MentorsRouteImport.update({
+  id: '/mentors',
+  path: '/mentors',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/feed': typeof FeedRoute
   '/ledger': typeof LedgerRoute
   '/login': typeof LoginRoute
+  '/mentors': typeof MentorsRoute
   '/onboarding': typeof OnboardingRoute
   '/report': typeof ReportRoute
   '/settings': typeof SettingsRoute
@@ -82,6 +89,7 @@ export interface FileRoutesByTo {
   '/feed': typeof FeedRoute
   '/ledger': typeof LedgerRoute
   '/login': typeof LoginRoute
+  '/mentors': typeof MentorsRoute
   '/onboarding': typeof OnboardingRoute
   '/report': typeof ReportRoute
   '/settings': typeof SettingsRoute
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/feed': typeof FeedRoute
   '/ledger': typeof LedgerRoute
   '/login': typeof LoginRoute
+  '/mentors': typeof MentorsRoute
   '/onboarding': typeof OnboardingRoute
   '/report': typeof ReportRoute
   '/settings': typeof SettingsRoute
@@ -107,6 +116,7 @@ export interface FileRouteTypes {
     | '/feed'
     | '/ledger'
     | '/login'
+    | '/mentors'
     | '/onboarding'
     | '/report'
     | '/settings'
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
     | '/feed'
     | '/ledger'
     | '/login'
+    | '/mentors'
     | '/onboarding'
     | '/report'
     | '/settings'
@@ -129,6 +140,7 @@ export interface FileRouteTypes {
     | '/feed'
     | '/ledger'
     | '/login'
+    | '/mentors'
     | '/onboarding'
     | '/report'
     | '/settings'
@@ -141,6 +153,7 @@ export interface RootRouteChildren {
   FeedRoute: typeof FeedRoute
   LedgerRoute: typeof LedgerRoute
   LoginRoute: typeof LoginRoute
+  MentorsRoute: typeof MentorsRoute
   OnboardingRoute: typeof OnboardingRoute
   ReportRoute: typeof ReportRoute
   SettingsRoute: typeof SettingsRoute
@@ -184,6 +197,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mentors': {
+      id: '/mentors'
+      path: '/mentors'
+      fullPath: '/mentors'
+      preLoaderRoute: typeof MentorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/onboarding': {
       id: '/onboarding'
       path: '/onboarding'
@@ -221,6 +241,7 @@ const rootRouteChildren: RootRouteChildren = {
   FeedRoute: FeedRoute,
   LedgerRoute: LedgerRoute,
   LoginRoute: LoginRoute,
+  MentorsRoute: MentorsRoute,
   OnboardingRoute: OnboardingRoute,
   ReportRoute: ReportRoute,
   SettingsRoute: SettingsRoute,
