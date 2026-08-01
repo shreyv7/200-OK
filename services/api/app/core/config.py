@@ -91,12 +91,14 @@ class Settings(BaseSettings):
 
     # SearchProvider DI (milestones.md M4). Defaults to the deterministic
     # fake so tests/local dev never require a live Tavily key.
-    search_provider: Literal["fake", "tavily"] = "fake"
+    search_provider: Literal["fake", "tavily", "youtube", "combined"] = "fake"
     tavily_api_key: str | None = None
     tavily_timeout_seconds: float = 1.5
 
     # Vector DB Provider (Qdrant Cloud)
-    vector_db_provider: Literal["fake", "qdrant"] = "qdrant"
+    # Default fake so CI/local smoke never require Qdrant Cloud; set
+    # VECTOR_DB_PROVIDER=qdrant + QDRANT_URL to enable live vector search.
+    vector_db_provider: Literal["fake", "qdrant"] = "fake"
     qdrant_url: str | None = None
     qdrant_api_key: str | None = None
     qdrant_collection_prefix: str = "trellis"
@@ -123,6 +125,12 @@ class Settings(BaseSettings):
     notion_oauth_client_id: str | None = None
     notion_oauth_client_secret: str | None = None
     notion_oauth_redirect_uri: str = "http://localhost:8002/api/v1/integrations/notion/callback"
+
+    # Neo4j Graph Provider DI settings
+    graph_provider: Literal["fake", "neo4j"] = "fake"
+    neo4j_uri: str = "bolt://localhost:7687"
+    neo4j_username: str = "neo4j"
+    neo4j_password: str = "trellis_password"
 
 
 

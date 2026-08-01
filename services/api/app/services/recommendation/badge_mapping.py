@@ -7,6 +7,8 @@ from app.schemas.stack import SourceBadge
 
 def document_source_to_badge(source: str) -> SourceBadge:
     normalized = source.lower().replace("_", " ").strip()
+    if "fallback" in normalized or "curated" in normalized:
+        return "Curated fallback"
     if "live" in normalized or "youtube" in normalized:
         return "Live web"
     if "cache" in normalized:

@@ -12,6 +12,7 @@ from app.api.capacity import router as capacity_router
 from app.api.catalog import router as catalog_router
 from app.api.dashboard import router as dashboard_router
 from app.api.evidence import router as evidence_router
+from app.api.feed import router as feed_router
 from app.api.github import router as github_router
 from app.api.health import router as health_router
 from app.api.identity import router as identity_router
@@ -22,6 +23,7 @@ from app.api.me import router as me_router
 from app.api.notion import router as notion_router
 from app.api.onboarding import router as onboarding_router
 from app.api.partners import router as partners_router
+from app.api.screentime import router as screentime_router
 from app.api.search import router as search_router
 from app.api.stack import router as stack_router
 from app.core.config import get_settings
@@ -60,6 +62,7 @@ app.include_router(health_router, prefix="/api/v1")
 app.include_router(health_router)  # unprefixed convenience for liveness probes
 app.include_router(me_router, prefix="/api/v1")
 app.include_router(evidence_router, prefix="/api/v1")
+app.include_router(feed_router, prefix="/api/v1")
 app.include_router(dashboard_router, prefix="/api/v1")
 app.include_router(identity_router, prefix="/api/v1")
 app.include_router(integrations_router, prefix="/api/v1")
@@ -77,7 +80,7 @@ app.include_router(agents_router, prefix="/api/v1")
 app.include_router(calendar_router, prefix="/api/v1")
 app.include_router(partners_router, prefix="/api/v1")
 app.include_router(search_router, prefix="/api/v1")
-
+app.include_router(screentime_router, prefix="/api/v1")
 
 register_identity_wiring()
 

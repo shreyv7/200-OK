@@ -1,9 +1,11 @@
 import { apiFetch } from "./client";
 import type {
   ApiDeclaredSelf,
+  ApiFeedPage,
   ApiMeUser,
   ApiOnboardingTurnResponse,
   ApiPartnerProfile,
+  ApiPreparedIntervention,
   QdrantStatusResponse,
   SemanticSearchResponse,
 } from "./types";
@@ -36,6 +38,25 @@ export function patchIdentity(body: {
   });
 }
 
+export function getGrowthFeed() {
+  return apiFetch<ApiFeedPage>("/feed");
+}
+
+export function getPreparedFeedIntervention() {
+  return apiFetch<ApiPreparedIntervention>("/feed/prepared-intervention");
+}
+
+export function recordFeedEvent(
+  itemId: string,
+  event: "viewed" | "opened" | "skipped" | "completed",
+  metadata: Record<string, unknown> = {},
+) {
+  return apiFetch("/feed/events", {
+    method: "POST",
+    body: JSON.stringify({ itemId, event, metadata }),
+  });
+}
+
 export function searchSemantic(query: string, collection: string = "all", limit: number = 5) {
   const params = new URLSearchParams({ q: query, collection, limit: String(limit) });
   return apiFetch<SemanticSearchResponse>(`/search/semantic?${params.toString()}`);
@@ -48,7 +69,7 @@ export function getVectorSearchStatus() {
 export function reindexVectorCatalog() {
   return apiFetch<{ status: string; message: string; counts?: Record<string, number> }>(
     "/search/vector/index",
-    { method: "POST" }
+    { method: "POST" },
   );
 }
 

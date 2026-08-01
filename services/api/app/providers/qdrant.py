@@ -36,6 +36,10 @@ class QdrantVectorStore:
         self.client: Any = None
         self._enabled = False
 
+        # VECTOR_DB_PROVIDER=fake keeps CI/local deterministic even if a URL is set.
+        if settings.vector_db_provider != "qdrant":
+            return
+
         if QDRANT_AVAILABLE and self.url:
             try:
                 self.client = QdrantClient(url=self.url, api_key=self.api_key, timeout=10.0)
