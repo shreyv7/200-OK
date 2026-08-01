@@ -17,6 +17,30 @@ from app.services.identity.twin import (
     DigitalTwinReadModel,
     assemble_digital_twin,
 )
+from app.services.identity.lattice import (
+    StrutContributor,
+    LatticeStrutDetail,
+    get_lattice_strut_detail,
+)
+from app.services.identity.kpi import (
+    KPISnapshot,
+    build_kpi_snapshot,
+)
+from app.services.identity.bottleneck_v0 import (
+    diagnose_bottleneck_v0,
+)
+from app.services.identity.recompute import (
+    recompute_user_gap,
+)
+from app.services.identity.confirmation import (
+    InterviewTurn,
+    InterviewState,
+    ConfirmationPayload,
+    build_confirmation_payload,
+)
+from app.services.identity.extractor import (
+    validate_and_repair_extraction,
+)
 
 __all__ = [
     "get_event_delta_days",
@@ -28,4 +52,16 @@ __all__ = [
     "build_revealed_aggregates",
     "DigitalTwinReadModel",
     "assemble_digital_twin",
+    "StrutContributor",
+    "LatticeStrutDetail",
+    "get_lattice_strut_detail",
+    "KPISnapshot",
+    "build_kpi_snapshot",
+    "diagnose_bottleneck_v0",
+    "recompute_user_gap",
+    "InterviewTurn",
+    "InterviewState",
+    "ConfirmationPayload",
+    "build_confirmation_payload",
+    "validate_and_repair_extraction",
 ]
