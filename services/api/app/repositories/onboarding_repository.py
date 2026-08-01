@@ -21,6 +21,16 @@ def get_session(db: Session, session_id: str) -> OnboardingSession | None:
     return db.get(OnboardingSession, session_id)
 
 
+def get_session_for_user(
+    db: Session, session_id: str, user_id: str
+) -> OnboardingSession | None:
+    session_row = get_session(db, session_id)
+    if session_row is None or session_row.user_id != user_id:
+        return None
+    return session_row
+
+
+
 def mark_completed(db: Session, session_id: str) -> None:
     session_row = db.get(OnboardingSession, session_id)
     if session_row is not None:

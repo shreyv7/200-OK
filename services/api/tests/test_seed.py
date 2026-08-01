@@ -62,11 +62,15 @@ def test_ensure_demo_dismissal_history_seeds_two_and_is_idempotent(db_session) -
 
     first = _ensure_demo_dismissal_history(db_session, user.id)
     assert first == 2
-    assert ledger_repository.count_recent_dismissals(db_session, DEMO_HYPOTHESIS_FAMILY, 14) == 2
+    assert ledger_repository.count_recent_dismissals(
+        db_session, user.id, DEMO_HYPOTHESIS_FAMILY, 14
+    ) == 2
 
     second = _ensure_demo_dismissal_history(db_session, user.id)
     assert second == 0
-    assert ledger_repository.count_recent_dismissals(db_session, DEMO_HYPOTHESIS_FAMILY, 14) == 2
+    assert ledger_repository.count_recent_dismissals(
+        db_session, user.id, DEMO_HYPOTHESIS_FAMILY, 14
+    ) == 2
 
 
 def _clear_evolution_proposals(db_session, user_id: str) -> None:

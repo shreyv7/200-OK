@@ -46,7 +46,6 @@ def _ingest_mission_completed(minutes_ago: int = 0) -> None:
     )
     event = _adapter.normalize(raw)
     payload = {
-        "userId": event.userId,
         "timestamp": event.timestamp.isoformat(),
         "source": event.source,
         "type": event.type,

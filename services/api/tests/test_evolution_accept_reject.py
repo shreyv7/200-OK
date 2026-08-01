@@ -4,6 +4,7 @@ from datetime import datetime
 
 from fastapi.testclient import TestClient
 
+from app.core.di import get_current_user_id
 from app.main import app
 from app.repositories import evolution_repository, twin_repository
 from app.schemas.evolution import IdentityEvolutionProposal, ProposedChange
@@ -112,7 +113,11 @@ def test_reject_leaves_identity_unchanged(db_session) -> None:
         ),
     )
 
-    resp = client.post(f"/api/v1/identity/evolution/{proposal.proposalId}/reject")
+    app.dependency_overrides[get_current_user_id] = lambda: user_id
+    try:
+        resp = client.post(f"/api/v1/identity/evolution/{proposal.proposalId}/reject")
+    finally:
+        app.dependency_overrides.pop(get_current_user_id, None)
     assert resp.status_code == 200
     assert resp.json()["status"] == "rejected"
 

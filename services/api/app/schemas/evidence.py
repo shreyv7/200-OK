@@ -30,10 +30,9 @@ class RawMCPPayload(BaseModel):
     rawPayload: dict[str, Any]
 
 
-class EvidenceIngestRequest(BaseModel):
-    """POST /api/v1/evidence body. Server generates `id` and the dedupe hash."""
+class EvidenceIngestBody(BaseModel):
+    """Public POST /api/v1/evidence body — no client-supplied userId (A3)."""
 
-    userId: str
     timestamp: datetime
     source: SourceProvider
     type: str
@@ -43,3 +42,9 @@ class EvidenceIngestRequest(BaseModel):
     baseWeight: float
     metadata: dict[str, Any] = Field(default_factory=dict)
     simulated: bool = False
+
+
+class EvidenceIngestRequest(EvidenceIngestBody):
+    """Internal ingest shape used by services/seed/simulator after auth attribution."""
+
+    userId: str

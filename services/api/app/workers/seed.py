@@ -174,7 +174,9 @@ def _ensure_demo_dismissal_history(session, user_id: str) -> int:
     """Seeds two prior dismissals (prd.md F7 demo script: the third LIVE
     dismissal on stage crosses DISMISSAL_FAILURE_THRESHOLD=3). Idempotent —
     only inserts if this family has no dismissal history yet."""
-    existing = ledger_repository.count_recent_dismissals(session, DEMO_HYPOTHESIS_FAMILY, 14)
+    existing = ledger_repository.count_recent_dismissals(
+        session, user_id, DEMO_HYPOTHESIS_FAMILY, 14
+    )
     if existing > 0:
         return 0
 

@@ -94,10 +94,11 @@ def list_adaptations(db: Session, user_id: str) -> list[LedgerEntry]:
 
 
 def count_recent_dismissals(
-    db: Session, hypothesis_family: str, window_days: int
+    db: Session, user_id: str, hypothesis_family: str, window_days: int
 ) -> int:
     cutoff = datetime.utcnow() - timedelta(days=window_days)
     stmt = select(LedgerEntryModel).where(
+        LedgerEntryModel.user_id == user_id,
         LedgerEntryModel.hypothesis_family == hypothesis_family,
         LedgerEntryModel.action == "dismissed",
         LedgerEntryModel.timestamp >= cutoff,
