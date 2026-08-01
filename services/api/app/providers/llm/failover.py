@@ -16,13 +16,23 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.providers.llm.base import LLMProvider, LLMProviderUnavailable
+from app.providers.llm.base import LLMProvider, LLMProviderUnavailable, LLMUsage
 
 
 class FailoverLLMProvider(LLMProvider):
     def __init__(self, primary: LLMProvider, fallback: LLMProvider) -> None:
         self._primary = primary
         self._fallback = fallback
+        self._last_serving_provider: LLMProvider | None = None
+
+    @property
+    def last_usage(self) -> LLMUsage | None:
+        """Proxies to whichever provider actually served the most recent
+        call (docs/work.md B5) — this wrapper never talks to a vendor SDK
+        itself, so it has no usage data of its own to report."""
+        if self._last_serving_provider is None:
+            return None
+        return self._last_serving_provider.last_usage
 
     def generate_structured(
         self,
@@ -31,6 +41,10 @@ class FailoverLLMProvider(LLMProvider):
         opts: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         try:
-            return self._primary.generate_structured(schema, messages, opts)
+            result = self._primary.generate_structured(schema, messages, opts)
+            self._last_serving_provider = self._primary
+            return result
         except LLMProviderUnavailable:
-            return self._fallback.generate_structured(schema, messages, opts)
+            result = self._fallback.generate_structured(schema, messages, opts)
+            self._last_serving_provider = self._fallback
+            return result

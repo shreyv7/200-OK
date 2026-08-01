@@ -69,6 +69,10 @@ class Settings(BaseSettings):
     # wraps the Gemini pool in FailoverLLMProvider so a fully-exhausted
     # Gemini pool automatically retries on Bedrock instead of failing.
     bedrock_failover_enabled: bool = False
+    # Per-user daily LLM call cap (docs/work.md B5). Applies regardless of
+    # which underlying provider actually serves a call (Gemini or, if
+    # failover is on, Bedrock) — see app/providers/llm/budget.py.
+    llm_daily_call_cap: int = 200
 
     def gemini_api_key_pool(self) -> list[str]:
         """Ordered, de-duplicated key pool: gemini_api_key first (back-compat

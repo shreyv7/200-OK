@@ -8,14 +8,15 @@ from typing import Any
 
 import pytest
 
-from app.providers.llm.base import LLMProvider, LLMProviderUnavailable
+from app.providers.llm.base import LLMProvider, LLMProviderUnavailable, LLMUsage
 from app.providers.llm.failover import FailoverLLMProvider
 
 
 class _StubProvider(LLMProvider):
-    def __init__(self, outcome: Any) -> None:
+    def __init__(self, outcome: Any, usage: LLMUsage | None = None) -> None:
         self.outcome = outcome
         self.calls = 0
+        self.last_usage = usage
 
     def generate_structured(self, schema, messages, opts=None):
         self.calls += 1
@@ -44,6 +45,25 @@ def test_provider_unavailable_falls_over_to_fallback() -> None:
 
     assert result == {"from": "fallback"}
     assert fallback.calls == 1
+
+
+def test_last_usage_proxies_to_whichever_provider_actually_served() -> None:
+    """B5 (docs/work.md): FailoverLLMProvider has no vendor SDK of its own
+    -- last_usage must reflect whichever inner provider actually served
+    the most recent call, not always the primary."""
+    primary = _StubProvider({"from": "primary"}, usage=LLMUsage(total_tokens=10))
+    fallback = _StubProvider({"from": "fallback"}, usage=LLMUsage(total_tokens=20))
+    provider = FailoverLLMProvider(primary=primary, fallback=fallback)
+
+    assert provider.last_usage is None  # nothing served yet
+
+    provider.generate_structured(schema={}, messages=[])
+    assert provider.last_usage is not None
+    assert provider.last_usage.total_tokens == 10  # primary served it
+
+    primary.outcome = LLMProviderUnavailable("now exhausted")
+    provider.generate_structured(schema={}, messages=[])
+    assert provider.last_usage.total_tokens == 20  # fallback served it this time
 
 
 def test_other_exception_propagates_without_touching_fallback() -> None:

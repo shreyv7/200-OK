@@ -18,8 +18,8 @@ from app.providers.llm.bedrock import BedrockLLMProvider
 _SCHEMA = {"type": "object", "properties": {"ok": {"type": "boolean"}}}
 
 
-def _tool_use_response(payload: dict) -> dict:
-    return {
+def _tool_use_response(payload: dict, usage: dict | None = None) -> dict:
+    response: dict = {
         "output": {
             "message": {
                 "content": [{"toolUse": {"name": "emit_structured_output", "input": payload}}]
@@ -27,6 +27,9 @@ def _tool_use_response(payload: dict) -> dict:
         },
         "stopReason": "tool_use",
     }
+    if usage is not None:
+        response["usage"] = usage
+    return response
 
 
 def _client_error(code: str) -> ClientError:
@@ -38,6 +41,24 @@ def test_missing_region_or_model_raises_at_construction() -> None:
         BedrockLLMProvider(region=None, model_id="m")
     with pytest.raises(RuntimeError):
         BedrockLLMProvider(region="us-east-1", model_id=None)
+
+
+def test_successful_call_records_last_usage() -> None:
+    """B5 (docs/work.md): the Converse API's usage block is captured as
+    LLMUsage so BudgetedLLMProvider can log token counts."""
+    provider = BedrockLLMProvider(region="us-east-1", model_id="test-model")
+    fake_client = MagicMock()
+    fake_client.converse.return_value = _tool_use_response(
+        {"ok": True}, usage={"inputTokens": 20, "outputTokens": 8, "totalTokens": 28}
+    )
+
+    with patch("boto3.client", return_value=fake_client):
+        provider.generate_structured(schema=_SCHEMA, messages=[{"role": "user", "content": "hi"}])
+
+    assert provider.last_usage is not None
+    assert provider.last_usage.input_tokens == 20
+    assert provider.last_usage.output_tokens == 8
+    assert provider.last_usage.total_tokens == 28
 
 
 def test_generate_structured_returns_tool_use_input() -> None:

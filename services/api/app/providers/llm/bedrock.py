@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.providers.llm.base import LLMProvider, LLMProviderUnavailable
+from app.providers.llm.base import LLMProvider, LLMProviderUnavailable, LLMUsage
 
 _TOOL_NAME = "emit_structured_output"
 
@@ -94,6 +94,17 @@ class BedrockLLMProvider(LLMProvider):
             if code in _RETRYABLE_ERROR_CODES:
                 raise LLMProviderUnavailable(f"Bedrock {code}: {exc}") from exc
             raise
+
+        usage = response.get("usage")
+        self.last_usage = (
+            LLMUsage(
+                input_tokens=usage.get("inputTokens"),
+                output_tokens=usage.get("outputTokens"),
+                total_tokens=usage.get("totalTokens"),
+            )
+            if usage is not None
+            else None
+        )
 
         for block in response["output"]["message"]["content"]:
             tool_use = block.get("toolUse")

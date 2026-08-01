@@ -27,8 +27,16 @@ def _server_error(code: int, status: str) -> errors.ServerError:
 
 
 class _FakeResponse:
-    def __init__(self, payload: dict) -> None:
+    def __init__(self, payload: dict, usage_metadata=None) -> None:
         self.text = json.dumps(payload)
+        self.usage_metadata = usage_metadata
+
+
+class _FakeUsageMetadata:
+    def __init__(self, prompt: int, candidates: int, total: int) -> None:
+        self.prompt_token_count = prompt
+        self.candidates_token_count = candidates
+        self.total_token_count = total
 
 
 def _fake_client(sequence):
@@ -58,6 +66,23 @@ def test_single_healthy_key_succeeds() -> None:
     health = provider.key_health()
     assert health[0]["success_count"] == 1
     assert health[0]["failure_count"] == 0
+
+
+def test_successful_call_records_last_usage() -> None:
+    """B5 (docs/work.md): usage_metadata from a real response is captured
+    as LLMUsage so BudgetedLLMProvider can log token counts."""
+    provider = GeminiLLMProvider(api_keys=["key-a"], model="gemini-2.0-flash")
+    usage = _FakeUsageMetadata(prompt=10, candidates=5, total=15)
+
+    fake = _fake_client([{"ok": True}])
+    fake.models.generate_content = lambda **kwargs: _FakeResponse({"ok": True}, usage_metadata=usage)
+    with patch("google.genai.Client", return_value=fake):
+        provider.generate_structured(schema=_SCHEMA, messages=_MESSAGES)
+
+    assert provider.last_usage is not None
+    assert provider.last_usage.input_tokens == 10
+    assert provider.last_usage.output_tokens == 5
+    assert provider.last_usage.total_tokens == 15
 
 
 def test_rotates_to_next_key_on_rate_limit() -> None:

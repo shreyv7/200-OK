@@ -1,7 +1,19 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Any
+
+
+@dataclass
+class LLMUsage:
+  """Best-effort token usage for one generate_structured() call
+  (docs/work.md B5). Not every provider can report this -- FakeLLMProvider
+  never sets it, since a fake call costs nothing."""
+
+  input_tokens: int | None = None
+  output_tokens: int | None = None
+  total_tokens: int | None = None
 
 
 class LLMProviderUnavailable(RuntimeError):
@@ -19,6 +31,11 @@ class LLMProviderUnavailable(RuntimeError):
 
 class LLMProvider(ABC):
   """Model-agnostic structured generation facade (techstack §11.1)."""
+
+  #: Set by an implementation after a successful call, when it can report
+  #: real usage (docs/work.md B5). None means "unknown/not applicable",
+  #: not "zero" -- callers should treat None as no cost data, not free.
+  last_usage: LLMUsage | None = None
 
   @abstractmethod
   def generate_structured(

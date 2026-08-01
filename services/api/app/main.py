@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.agents import router as agents_router
 from app.api.calendar import router as calendar_router
@@ -24,6 +25,7 @@ from app.api.stack import router as stack_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.core.telemetry import TraceContextMiddleware
+from app.providers.llm.budget import LLMBudgetExceeded
 from app.services.identity.wiring import register as register_identity_wiring
 
 configure_logging()
@@ -40,6 +42,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(LLMBudgetExceeded)
+async def _llm_budget_exceeded_handler(_request: Request, exc: LLMBudgetExceeded) -> JSONResponse:
+    """B5 (docs/work.md): one place all routers get this for free instead
+    of each needing its own try/except around an LLM-calling service."""
+    return JSONResponse(
+        status_code=429,
+        content={"error_code": "llm_budget_exceeded", "detail": str(exc)},
+    )
+
 
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(health_router)  # unprefixed convenience for liveness probes

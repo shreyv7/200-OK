@@ -51,7 +51,7 @@ import json
 import time
 from typing import Any
 
-from app.providers.llm.base import LLMProvider, LLMProviderUnavailable
+from app.providers.llm.base import LLMProvider, LLMProviderUnavailable, LLMUsage
 
 _RATE_LIMIT_COOLDOWN_SECONDS = 60.0
 _INVALID_KEY_COOLDOWN_SECONDS = 3600.0
@@ -143,6 +143,16 @@ class GeminiLLMProvider(LLMProvider):
                 raise
             else:
                 slot.success_count += 1
+                usage = getattr(response, "usage_metadata", None)
+                self.last_usage = (
+                    LLMUsage(
+                        input_tokens=usage.prompt_token_count,
+                        output_tokens=usage.candidates_token_count,
+                        total_tokens=usage.total_token_count,
+                    )
+                    if usage is not None
+                    else None
+                )
                 return json.loads(response.text)
 
         if last_exc is not None:
