@@ -1,11 +1,17 @@
 import { apiFetch } from "./client";
 import type {
+  ApiAgentRunResult,
+  ApiDashboardSummary,
   ApiDeclaredSelf,
   ApiFeedPage,
+  ApiIdentityStack,
+  ApiLedgerEntry,
+  ApiLedgerRecordRequest,
   ApiMeUser,
   ApiOnboardingTurnResponse,
   ApiPartnerProfile,
   ApiPreparedIntervention,
+  ApiStackVariants,
   QdrantStatusResponse,
   SemanticSearchResponse,
 } from "./types";
@@ -55,6 +61,64 @@ export function recordFeedEvent(
     method: "POST",
     body: JSON.stringify({ itemId, event, metadata }),
   });
+}
+
+export function patchCapacity(value: number) {
+  return apiFetch<{ capacity: number }>("/capacity", {
+    method: "PATCH",
+    body: JSON.stringify({ value }),
+  });
+}
+
+export function getDashboardSummary() {
+  return apiFetch<ApiDashboardSummary>("/dashboard/summary");
+}
+
+export function getActiveStack() {
+  return apiFetch<ApiIdentityStack>("/stack/active");
+}
+
+export function getStackVariants() {
+  return apiFetch<ApiStackVariants>("/stack/variants");
+}
+
+export function refreshStack() {
+  return apiFetch<{ status: string }>("/stack/refresh", { method: "POST" });
+}
+
+export function listLedger() {
+  return apiFetch<ApiLedgerEntry[]>("/ledger");
+}
+
+export function listLedgerAdaptations() {
+  return apiFetch<ApiLedgerEntry[]>("/ledger/adaptations");
+}
+
+export function recordLedgerAction(body: ApiLedgerRecordRequest) {
+  return apiFetch<ApiLedgerEntry>("/ledger/record", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function createAgentRun(type: "weekly_report" | "evolution") {
+  return apiFetch<ApiAgentRunResult>("/agents/runs", {
+    method: "POST",
+    body: JSON.stringify({ type }),
+  });
+}
+
+export function acceptEvolution(proposalId: string) {
+  return apiFetch<ApiDeclaredSelf>(`/identity/evolution/${proposalId}/accept`, {
+    method: "POST",
+  });
+}
+
+export function rejectEvolution(proposalId: string) {
+  return apiFetch<{ proposalId: string; status: string }>(
+    `/identity/evolution/${proposalId}/reject`,
+    { method: "POST" },
+  );
 }
 
 export function searchSemantic(query: string, collection: string = "all", limit: number = 5) {

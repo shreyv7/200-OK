@@ -31,3 +31,31 @@ class GraphSyncService:
             extract=resource_data.get("extract", ""),
             bottleneck_type=resource_data.get("bottleneck_type"),
         )
+
+
+def sync_user_graph(
+    db: Any,
+    user_id: str,
+    *,
+    provider: Any,
+) -> dict[str, Any]:
+    """Project user twin + active bottleneck into the graph store."""
+    from app.repositories import twin_repository
+    from app.repositories.graph_repository import GraphRepository
+
+    repo = GraphRepository(provider)
+    service = GraphSyncService(repo)
+    service.sync_user(user_id)
+
+    declared = twin_repository.get_active_declared_self(db, user_id)
+    attributes_synced = len(declared.attributes) if declared is not None else 0
+    bottleneck = "execution"
+
+    service.sync_bottleneck(user_id, bottleneck, title=bottleneck.replace("_", " ").title())
+    return {
+        "userId": user_id,
+        "bottleneck": bottleneck,
+        "attributesSynced": attributes_synced,
+        "resourcesSynced": 0,
+        "provider": provider.__class__.__name__,
+    }

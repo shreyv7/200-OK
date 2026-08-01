@@ -1,85 +1,90 @@
-# TRELLIS Companion - Tampermonkey Telemetry Layer (Instagram & Facebook)
+# TRELLIS Companion - Tampermonkey Telemetry Layer
 
-This directory contains the automatic behavioral telemetry tracking layer for the TRELLIS Evidence Pipeline. The layer captures content consumption on **Instagram** (`instagram.com`) and **Facebook** (`facebook.com`) (and YouTube) and streams normalized `EvidenceEvent` payloads automatically to the TRELLIS backend.
-
----
-
-## 1. Files Created & Modified
-
-### Created Files (All inside `tampermonkey/`):
-- [trellis-telemetry.user.js](file:///c:/Users/ANVI/Desktop/hbt/tampermonkey/trellis-telemetry.user.js) - Standalone production Userscript with full telemetry client, companion detection, Instagram & Facebook Trackers, Focus Drift Engine, and automatic updates metadata.
-- [telemetry-core.js](file:///c:/Users/ANVI/Desktop/hbt/tampermonkey/telemetry-core.js) - Core module for queueing, exponential backoff retries, localStorage persistence, batching, and `GM_xmlhttpRequest`/`fetch()` POST transport.
-- [instagram-tracker.js](file:///c:/Users/ANVI/Desktop/hbt/tampermonkey/instagram-tracker.js) - Instagram-specific DOM detection, feed tracking, Reels view observers, and scroll metrics.
-- [facebook-tracker.js](file:///c:/Users/ANVI/Desktop/hbt/tampermonkey/facebook-tracker.js) - Facebook-specific DOM detection, feed/timeline tracking, Watch & Reels view observers.
-- [focus-drift-detector.js](file:///c:/Users/ANVI/Desktop/hbt/tampermonkey/focus-drift-detector.js) - Lightweight local Focus Drift engine enforcing scroll count (>5), continuous scroll duration (>30s), and excessive short-form consumption thresholds.
-- [README.md](file:///c:/Users/ANVI/Desktop/hbt/tampermonkey/README.md) - Architectural documentation, installation flow, and companion detection guide.
-
-### Modified Files Outside `tampermonkey/`:
-- **NONE.** Strictly zero files modified outside the `tampermonkey/` directory per constraint.
+Automatic behavioral telemetry for the TRELLIS Evidence Pipeline. Captures content consumption on **Instagram**, **Facebook**, and **YouTube**, then streams normalized `EvidenceEvent` payloads to the backend.
 
 ---
 
-## 2. Optimized 1-Click Installation Flow
+## Files
+
+| File | Role |
+|------|------|
+| `trellis-telemetry.user.js` | Production userscript (install this) |
+| `telemetry-core.js` | Reference module: queue, retry, transport |
+| `instagram-tracker.js` | Reference Instagram tracker |
+| `facebook-tracker.js` | Reference Facebook tracker |
+| `focus-drift-detector.js` | Reference focus-drift thresholds |
+
+The installable artifact is the single bundled `trellis-telemetry.user.js`. The other `.js` files are modular references for maintenance.
+
+---
+
+## One-click install flow
 
 ```text
-User opens TRELLIS Web App
+Open TRELLIS → Settings → Integrations
         ↓
-Signs in
+Click "Enable Behavioral Tracking"
         ↓
-Clicks "Enable Behavioral Tracking"
-        ↓ (Navigates directly to Userscript URL: http://localhost:8002/tampermonkey/trellis-telemetry.user.js)
-Tampermonkey Auto-Installer Opens
-        ↓ (User clicks "Install" button once)
-Done Forever!
+http://localhost:8002/tampermonkey/trellis-telemetry.user.js
         ↓
-Opening Instagram / Facebook automatically initializes telemetry
-Closing those sites automatically stops telemetry
+Tampermonkey Install dialog → Install once
+        ↓
+Browse Instagram / Facebook / YouTube → events stream automatically
 ```
 
-### User Interaction Count
-- **Exactly 1 Click** (on the official Tampermonkey "Install" button).
-- **Zero manual copying, zero code pasting, zero manual configuration, zero manual uploads.**
+Prerequisites:
+1. API running on `http://localhost:8002`
+2. Tampermonkey browser extension installed
+3. Signed into Trellis (Companion stores your Clerk session token via an auth bridge)
 
 ---
 
-## 3. What Happens Automatically vs. What Happens Only Once
+## What is captured
 
-### Happens Only Once:
-- User clicks **"Install"** on the Tampermonkey script dialog.
+- Session start / tab visibility
+- Feed / surface enter & exit with dwell time
+- Scroll bursts (every 10 scroll frames)
+- Reels / Shorts / Watch consumption
+- Focus-drift signals:
+  - ≥5 continuous scrolls in 4s
+  - ≥30s continuous scrolling
+  - ≥3 reels/shorts
+  - ≥60s total reel dwell
 
-### Happens Automatically (Forever):
-1. **Automatic Initialization & Configuration:** Upon opening `instagram.com` or `facebook.com`, the script initializes with pre-configured backend endpoints (`http://localhost:8002/api/v1/evidence`) and user authentication.
-2. **Automatic Activity Detection:** Detects scroll count, continuous scroll duration, feed dwell time, and Reels consumption.
-3. **Automatic Focus Drift Telemetry:** Emits `focus_drift` EvidenceEvents when scroll/reel thresholds are breached.
-4. **Automatic Streaming:** Enqueues and POSTs telemetry events to backend `POST /api/v1/evidence`.
-5. **Automatic Offline Queueing & Retry:** Retries failed requests with exponential backoff (`1000ms` to `60000ms`) and flushes on network restoration (`online` event).
-6. **Automatic Cleanup:** Flushes remaining events and destroys timer resources on page unload (`beforeunload`).
-7. **Automatic Updates:** Tampermonkey checks `@updateURL` in background and updates to newer versions automatically without re-installation.
-
----
-
-## 4. Webpage Companion Detection Mechanism
-
-The userscript prepares three non-intrusive detection mechanisms so the TRELLIS web app can detect whether the Companion is installed:
-
-1. **DOM Attribute:** Sets `document.documentElement.setAttribute("data-trellis-companion-installed", "1.0.0")`.
-2. **Custom Event:** Dispatches `CustomEvent("trellis:companion-ready", { detail: { installed: true, version: "1.0.0", active: true } })`.
-3. **Window `postMessage` Listener:** Listens for `{ type: "TRELLIS_COMPANION_PING" }` and replies with `{ type: "TRELLIS_COMPANION_PONG", installed: true, version: "1.0.0", active: true }`.
+Events POST to `http://localhost:8002/api/v1/evidence` with:
+- `source: "trellis"` (or `youtube` on YouTube; Instagram/Facebook remap to `trellis`)
+- `type: "passive_item"` for browsing, `"focus_drift_10min"` for drift (Gap-engine compatible)
+- `metadata.companionEventType` preserves the detailed companion signal name
+- `metadata.platform` preserves Instagram / Facebook / YouTube
+- Bearer auth from the token bridged out of the Trellis web app
 
 ---
 
-## 5. End-to-End Pipeline Data Flow
+## Companion detection (Trellis web app)
+
+When installed, the userscript also matches local Trellis origins and exposes:
+
+1. `document.documentElement[data-trellis-companion-installed]`
+2. DOM events: `trellis:companion-pong` / `trellis:companion-ready`
+3. `postMessage` ping/pong (`TRELLIS_COMPANION_PING` / `TRELLIS_COMPANION_PONG`)
+4. Auth bridge: `trellis:set-auth-token` / `TRELLIS_SET_AUTH_TOKEN` → `GM_setValue("trellis_auth_token")`
+
+---
+
+## End-to-end data flow
 
 ```text
-Browse Instagram / Facebook naturally
-       ↓ (Automatic passive detection & focus drift evaluation)
-Evidence API (POST http://localhost:8002/api/v1/evidence)
-       ↓ (Authenticated user attribution & deduplication)
-EvidenceEvent (Persisted via evidence_service.ingest)
-       ↓ (PostgreSQL evidence_events table persistence)
-Gap Engine (Recomputes Identity Gap ratio, create:consume alignment)
-       ↓ (Dashboard updates & state invalidation)
-Dashboard & Trust Ledger (Visualizes 21-day trajectory & attribute divergence)
-       ↓ (Re-curation trigger)
-Curator (LangGraph Coordinator pipeline assembles updated Identity Stack)
+Browse Instagram / Facebook / YouTube
+       ↓
+Companion userscript queues EvidenceEvents
+       ↓
+POST /api/v1/evidence  (auth attributed userId)
+       ↓
+evidence_service.ingest → PostgreSQL evidence_events
+       ↓
+evidence.created hook → Gap recompute + Evidence Pipeline
+       ↓
+Dashboard / Identity Stack refresh
 ```
+
+Note: persistence is **PostgreSQL** (not SQLite). Qdrant is used for semantic search / catalog ranking, not for raw Companion event writes.

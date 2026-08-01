@@ -9,11 +9,13 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
+from sqlalchemy.orm import Session
+
 from app.schemas import DecisionPacket, IdentityStack
-from app.services.recommendation.curation_cycle import run_curation_cycle
 from app.services.recommendation.decision_consumer import consume_gap_update
 from app.services.recommendation.evolution_trigger import EvolutionAcceptedEvent
 from app.services.recommendation.stack_state import apply_invalidation, get_active_stack
+from app.services.recommendation.warm_cache import warm_cache_after_evolution
 
 EvolutionAcceptHandler = Callable[[EvolutionAcceptedEvent], dict[str, Any]]
 
@@ -47,38 +49,49 @@ def build_evolution_decision_packet(event: EvolutionAcceptedEvent) -> DecisionPa
     return packet
 
 
-def on_evolution_accepted(event: EvolutionAcceptedEvent) -> dict[str, Any]:
+def on_evolution_accepted(
+    event: EvolutionAcceptedEvent,
+    *,
+    db: Session | None = None,
+) -> dict[str, Any]:
     """Invalidate stack assumptions and run a full re-curation against Twin vN."""
     run_id = f"evolve-{event.userId}-v{event.declaredSelfVersion}"
     packet = build_evolution_decision_packet(event)
     apply_invalidation(event.userId, packet)
 
-    stack = run_curation_cycle(
-        packet,
-        trigger="evolution.accepted",
-        run_id=run_id,
-        persist_active_stack=True,
-    )
-    if not isinstance(stack, IdentityStack):
-        stack = stack.stack
+    warm_result = None
+    stack: IdentityStack | None = None
+    if db is not None:
+        warm_result = warm_cache_after_evolution(
+            db,
+            event.userId,
+            packet,
+            run_id=run_id,
+        )
+        if warm_result.ok:
+            stack = get_active_stack(event.userId)
 
     return {
         "trigger": event.trigger,
         "run_id": run_id,
         "declaredSelfVersion": event.declaredSelfVersion,
         "decision_packet": packet.model_dump(),
-        "identity_stack": stack.model_dump(),
+        "identity_stack": stack.model_dump() if stack is not None else None,
         "warm_cache": {
-            "ok": True,
-            "reason": None,
-            "stackId": stack.id,
+            "ok": warm_result.ok if warm_result is not None else False,
+            "reason": warm_result.reason if warm_result is not None else "no_db_session",
+            "stackId": warm_result.stackId if warm_result is not None else None,
         },
     }
 
 
-def emit_evolution_accepted(event: EvolutionAcceptedEvent) -> dict[str, Any]:
+def emit_evolution_accepted(
+    event: EvolutionAcceptedEvent,
+    *,
+    db: Session | None = None,
+) -> dict[str, Any]:
     """In-process emitter — Backend identity service calls after Twin vN write."""
-    result = on_evolution_accepted(event)
+    result = on_evolution_accepted(event, db=db)
     for callback in _subscribers:
         callback(event)
     return result

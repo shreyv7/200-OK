@@ -34,12 +34,12 @@ def test_rate_limiter_throttles_bursts_per_user() -> None:
         "baseWeight": 1.0,
     }
 
-    # demo-user-aarav (auth bypass) sends 10 requests (at limit)
-    for _ in range(10):
+    # Companion telemetry allows 60 evidence POSTs / 60s per user.
+    for _ in range(60):
         res = client.post("/api/v1/evidence", json=payload)
         assert res.status_code in {200, 201}
 
-    # 11th request gets HTTP 429
+    # 61st request gets HTTP 429
     res = client.post("/api/v1/evidence", json=payload)
     assert res.status_code == 429
     assert "Rate limit exceeded" in res.json()["detail"]

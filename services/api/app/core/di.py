@@ -12,8 +12,12 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings, get_settings
 from app.core.db import get_db
 from app.core.security import get_current_user_id
+from app.providers.embeddings import EmbeddingProvider, get_embedding_provider as _build_embedder
+from app.providers.graph import get_graph_provider as _build_graph_provider
+from app.providers.graph.base import GraphProvider
 from app.providers.llm.base import LLMProvider
 from app.providers.llm.fake import FakeLLMProvider
+from app.providers.qdrant import QdrantVectorStore, get_vector_store as _build_vector_store
 from app.providers.search.base import SearchProvider
 from app.providers.search.fake import FakeSearchProvider
 
@@ -138,6 +142,22 @@ def get_youtube_provider(settings: Settings = Depends(get_settings)) -> SearchPr
     )
 
 
+def get_embedding_provider(settings: Settings = Depends(get_settings)) -> EmbeddingProvider:
+    """Settings-driven embedding provider (fake hash or Gemini)."""
+    return _build_embedder(settings)
+
+
+def get_vector_store(settings: Settings = Depends(get_settings)) -> QdrantVectorStore:
+    """Qdrant vector store singleton (disabled when VECTOR_DB_PROVIDER=fake)."""
+    _ = settings  # ensure Depends(get_settings) participates in overrides
+    return _build_vector_store()
+
+
+def get_graph_provider(settings: Settings = Depends(get_settings)) -> GraphProvider:
+    """Neo4j / fake graph provider for Graph RAG."""
+    return _build_graph_provider(settings)
+
+
 __all__ = [
     "get_db",
     "get_current_user_id",
@@ -146,6 +166,9 @@ __all__ = [
     "wrap_llm_provider_with_budget",
     "get_search_provider",
     "get_youtube_provider",
+    "get_embedding_provider",
+    "get_vector_store",
+    "get_graph_provider",
     "Depends",
     "Session",
 ]

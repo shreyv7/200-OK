@@ -16,25 +16,36 @@ from app.providers.search.base import Document, SearchProvider
 
 _CURATED_YOUTUBE_FALLBACKS: list[Document] = [
     Document(
-        title="Deep Work: Rules for Focused Success in a Distracted World",
-        url="https://www.youtube.com/watch?v=gT8g001zJwc",
-        extract="Key strategies for cultivating intense focus and eliminating digital friction.",
+        title="How to Get Your Brain to Focus | Chris Bailey | TEDxManchester",
+        url="https://www.youtube.com/watch?v=Hu4Yvq-g7_Y",
+        extract="Practical focus strategies for a distracted world.",
         source="curated_youtube_fallback",
         metadata={
-            "video_id": "gT8g001zJwc",
-            "channel_title": "Productivity Insights",
-            "thumbnail_url": "https://img.youtube.com/vi/gT8g001zJwc/hqdefault.jpg",
+            "video_id": "Hu4Yvq-g7_Y",
+            "channel_title": "TEDx Talks",
+            "thumbnail_url": "https://img.youtube.com/vi/Hu4Yvq-g7_Y/hqdefault.jpg",
         },
     ),
     Document(
-        title="Building a Second Brain - Executive Summary",
-        url="https://www.youtube.com/watch?v=K-ssA1x0000",
+        title="How to Build a Second Brain",
+        url="https://www.youtube.com/watch?v=OP3dA2GcAh8",
         extract="Methodology for capturing, organizing, and distilling personal knowledge.",
         source="curated_youtube_fallback",
         metadata={
-            "video_id": "K-ssA1x0000",
-            "channel_title": "Forte Labs",
-            "thumbnail_url": "https://img.youtube.com/vi/K-ssA1x0000/hqdefault.jpg",
+            "video_id": "OP3dA2GcAh8",
+            "channel_title": "Ali Abdaal",
+            "thumbnail_url": "https://img.youtube.com/vi/OP3dA2GcAh8/hqdefault.jpg",
+        },
+    ),
+    Document(
+        title="The Art of Code - Dylan Beattie",
+        url="https://www.youtube.com/watch?v=6avJHaC3C2U",
+        extract="A talk on programming as creative craft — music, language, and software.",
+        source="curated_youtube_fallback",
+        metadata={
+            "video_id": "6avJHaC3C2U",
+            "channel_title": "NDC Conferences",
+            "thumbnail_url": "https://img.youtube.com/vi/6avJHaC3C2U/hqdefault.jpg",
         },
     ),
 ]
@@ -60,16 +71,29 @@ class YouTubeMediaProvider(SearchProvider):
         if not self._api_keys:
             return self.get_fallback(query)
 
-        max_results = opts.get("max_results", 5) if opts else 5
+        opts = opts or {}
+        max_results = opts.get("max_results", 5)
+        # Prefer longer-form videos over Shorts when callers ask for quality feed.
+        video_duration = opts.get("videoDuration", "any")
+        safe_search = opts.get("safeSearch", "moderate")
+        relevance_language = opts.get("relevanceLanguage")
+        video_category_id = opts.get("videoCategoryId")
 
         for key in self._api_keys:
-            params = {
+            params: dict[str, Any] = {
                 "part": "snippet",
                 "type": "video",
                 "q": query,
                 "maxResults": max_results,
                 "key": key,
+                "safeSearch": safe_search,
             }
+            if video_duration and video_duration != "any":
+                params["videoDuration"] = video_duration
+            if relevance_language:
+                params["relevanceLanguage"] = relevance_language
+            if video_category_id:
+                params["videoCategoryId"] = video_category_id
 
             try:
                 with httpx.Client(timeout=self._timeout_seconds) as client:

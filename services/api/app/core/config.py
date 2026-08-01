@@ -103,6 +103,20 @@ class Settings(BaseSettings):
     qdrant_api_key: str | None = None
     qdrant_collection_prefix: str = "trellis"
 
+    # Embedding provider for Qdrant / partner match. Defaults to fake
+    # (deterministic hash vectors). Set EMBEDDING_PROVIDER=gemini with a
+    # Gemini key for real gemini-embedding-001 vectors (3072-dim).
+    embedding_provider: Literal["fake", "gemini"] = "fake"
+    embedding_model: str = "gemini-embedding-001"
+    embedding_dims: int = 32
+
+    # Graph DB Provider (Neo4j). Defaults to fake in-memory provider so
+    # CI never requires a live Neo4j instance. Set GRAPH_DB_PROVIDER=neo4j
+    # + NEO4J_URI to enable live Graph RAG.
+    graph_db_provider: Literal["fake", "neo4j"] = "fake"
+    neo4j_uri: str | None = None
+    neo4j_user: str = "neo4j"
+    neo4j_password: str | None = None
 
     # YouTube Data API (work.md C2).
     youtube_api_key: str | None = None

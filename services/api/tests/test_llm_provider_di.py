@@ -77,7 +77,7 @@ def test_gemini_config_accepts_nested_pydantic_schema() -> None:
     offline unit test."""
     from google.genai import types
 
-    from app.services.identity.onboarding_orchestration import _ExtractionSchema
+    from app.agents.nodes.identity.node import _ExtractionSchema
 
     schema = _ExtractionSchema.model_json_schema()
     assert "$defs" in schema  # sanity: this schema is genuinely nested

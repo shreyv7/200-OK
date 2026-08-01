@@ -19,6 +19,10 @@ export default defineConfig({
           target: "http://localhost:8002",
           changeOrigin: true,
         },
+        "/tampermonkey": {
+          target: "http://localhost:8002",
+          changeOrigin: true,
+        },
       },
     },
   },

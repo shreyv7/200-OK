@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import FastAPI, Request
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from app.api.agents import router as agents_router
 from app.api.calendar import router as calendar_router
@@ -14,6 +16,7 @@ from app.api.dashboard import router as dashboard_router
 from app.api.evidence import router as evidence_router
 from app.api.feed import router as feed_router
 from app.api.github import router as github_router
+from app.api.graph import router as graph_router
 from app.api.health import router as health_router
 from app.api.identity import router as identity_router
 from app.api.integrations import router as integrations_router
@@ -37,6 +40,8 @@ configure_logging()
 app = FastAPI(title="Trellis API", version="0.1.0")
 
 _settings = get_settings()
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_TAMPERMONKEY_DIR = (_REPO_ROOT / "tampermonkey").resolve()
 
 app.add_middleware(TraceContextMiddleware)
 app.add_middleware(
@@ -46,6 +51,34 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/tampermonkey/{filename}")
+def serve_tampermonkey_script(filename: str) -> FileResponse:
+    """Serve Companion userscripts for one-click Tampermonkey install/update."""
+    if "/" in filename or "\\" in filename or filename.startswith("."):
+        raise HTTPException(status_code=404, detail="Not found")
+    if not (filename.endswith(".user.js") or filename.endswith(".js") or filename == "README.md"):
+        raise HTTPException(status_code=404, detail="Not found")
+
+    path = (_TAMPERMONKEY_DIR / filename).resolve()
+    if not str(path).startswith(str(_TAMPERMONKEY_DIR) + "/") or not path.is_file():
+        raise HTTPException(status_code=404, detail="Not found")
+
+    if filename.endswith(".js"):
+        media_type = "text/javascript; charset=utf-8"
+    else:
+        media_type = "text/markdown; charset=utf-8"
+
+    return FileResponse(
+        path,
+        media_type=media_type,
+        headers={
+            # Tampermonkey install dialog needs an inline .user.js body.
+            "Content-Disposition": f'inline; filename="{filename}"',
+            "Cache-Control": "no-cache",
+        },
+    )
 
 
 @app.exception_handler(LLMBudgetExceeded)
@@ -80,6 +113,7 @@ app.include_router(agents_router, prefix="/api/v1")
 app.include_router(calendar_router, prefix="/api/v1")
 app.include_router(partners_router, prefix="/api/v1")
 app.include_router(search_router, prefix="/api/v1")
+app.include_router(graph_router, prefix="/api/v1")
 app.include_router(screentime_router, prefix="/api/v1")
 
 register_identity_wiring()

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { RequireAuth } from "@/authentication";
 import { AppShell } from "@/components/trellis/AppShell";
 import { IntegrationsPanel } from "@/components/trellis/IntegrationsPanel";
+import { CatalogSyncPanel } from "@/components/trellis/CatalogSyncPanel";
 import { SlidersHorizontal, Zap } from "lucide-react";
 
 export const Route = createFileRoute("/settings")({
@@ -84,8 +85,11 @@ function SettingsPage() {
         {activeTab === "integrations" && <IntegrationsPanel />}
 
         {activeTab === "preferences" && (
-          <div className="rounded-2xl border border-border bg-card/60 p-8 text-center text-xs text-muted-foreground">
-            Account & notifications preferences coming soon.
+          <div className="space-y-4">
+            <CatalogSyncPanel />
+            <div className="rounded-2xl border border-border bg-card/60 p-8 text-center text-xs text-muted-foreground">
+              Account & notifications preferences coming soon.
+            </div>
           </div>
         )}
       </div>

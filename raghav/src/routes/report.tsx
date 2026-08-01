@@ -2,10 +2,16 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowDownRight, Check, X } from "lucide-react";
+import { toast } from "sonner";
 import { RequireAuth } from "@/authentication";
 import { AppShell } from "@/components/trellis/AppShell";
+import {
+  acceptEvolution,
+  createAgentRun,
+  rejectEvolution,
+} from "@/lib/api/endpoints";
+import type { ApiEvolutionProposal, ApiWeeklyReport } from "@/lib/api/types";
 import { useTrellis } from "@/lib/trellis/store";
-import { mock } from "@/lib/trellis/mockApi";
 
 export const Route = createFileRoute("/report")({
   head: () => ({
@@ -33,22 +39,40 @@ function ReportPage() {
 }
 
 function Report() {
-  const { gap, identityUpdated, acceptIdentityEvolution } = useTrellis();
-  const [generated, setGenerated] = useState(false);
+  const { gap, acceptIdentityEvolution, refreshLiveData } = useTrellis();
   const [generating, setGenerating] = useState(false);
-  const [proposalChoice, setProposalChoice] = useState<"accepted" | "kept" | null>(
-    identityUpdated ? "accepted" : null,
-  );
+  const [report, setReport] = useState<ApiWeeklyReport | null>(null);
+  const [proposal, setProposal] = useState<ApiEvolutionProposal | null>(null);
+  const [proposalChoice, setProposalChoice] = useState<"accepted" | "kept" | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const pct = (n: number) => `${Math.round(n * 100)}%`;
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     setGenerating(true);
-    setTimeout(() => {
+    setError(null);
+    try {
+      const weekly = await createAgentRun("weekly_report");
+      setReport(weekly.weeklyReport ?? null);
+      try {
+        const evo = await createAgentRun("evolution");
+        setProposal(evo.evolutionProposal ?? null);
+      } catch {
+        setProposal(null);
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Could not generate report. Complete onboarding first.";
+      setError(message);
+      toast.error("Report generation failed", { description: message });
+    } finally {
       setGenerating(false);
-      setGenerated(true);
-    }, 1400);
+    }
   };
+
+  const proposedLabel =
+    proposal?.proposedChanges.map((c) => c.attributeLabel).join(" · ") ||
+    "Updated Declared Self";
 
   return (
     <AppShell title="Weekly Report">
@@ -64,13 +88,13 @@ function Report() {
           </p>
         </header>
 
-        {!generated && (
+        {!report && (
           <div className="rounded-3xl border border-border bg-card p-8 text-center space-y-5">
             <p className="text-sm text-muted-foreground">
               Generate from the current 21-day evidence window and Declared Self.
             </p>
             <button
-              onClick={handleGenerate}
+              onClick={() => void handleGenerate()}
               disabled={generating}
               className="inline-flex items-center gap-2 rounded-full bg-foreground px-7 py-3.5 text-sm font-medium text-background hover:bg-foreground/90 disabled:opacity-60 transition-colors"
             >
@@ -78,14 +102,17 @@ function Report() {
             </button>
             {generating && (
               <p className="font-mono text-[10px] text-muted-foreground animate-pulse">
-                Narrative agent · structured over live DB state
+                Narrative agent · Gemini structured over live DB state
               </p>
+            )}
+            {error && (
+              <p className="text-sm text-failure">{error}</p>
             )}
           </div>
         )}
 
         <AnimatePresence>
-          {generated && (
+          {report && (
             <motion.article
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
@@ -94,31 +121,48 @@ function Report() {
             >
               <div className="relative">
                 <div className="flex items-baseline justify-between gap-4">
-                  <p className="label-eyebrow">Becoming report · week 3</p>
+                  <p className="label-eyebrow">Becoming report</p>
                   <p className="num font-mono text-xs text-muted-foreground">
-                    Gap {gap.score}
+                    Gap {report.gapScoreEnd}
                   </p>
                 </div>
 
                 <h2 className="mt-6 font-display text-2xl sm:text-3xl leading-tight font-medium tracking-tight">
-                  {mock.weeklyNarrative.arc}
+                  {report.highlights[0] ?? "This week&apos;s identity movement"}
                 </h2>
-                <p className="mt-6 leading-relaxed text-muted-foreground">
-                  {mock.weeklyNarrative.body}
+                <p className="mt-6 leading-relaxed text-muted-foreground whitespace-pre-wrap">
+                  {report.narrative}
                 </p>
 
+                {report.highlights.length > 1 && (
+                  <ul className="mt-6 space-y-2">
+                    {report.highlights.slice(1).map((item) => (
+                      <li key={item} className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="mt-1.5 h-1 w-1 rounded-full bg-signal shrink-0" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
                 <dl className="mt-8 grid grid-cols-2 gap-5 border-t border-border pt-6 sm:grid-cols-4">
-                  <Stat label="Gap trend" value="−4" icon />
+                  <Stat
+                    label="Gap trend"
+                    value={`${report.gapDelta > 0 ? "+" : ""}${report.gapDelta}`}
+                    icon={report.gapDelta < 0}
+                  />
                   <Stat
                     label="Create : Consume"
                     value={`${pct(gap.createRatio)} : ${pct(gap.consumeRatio)}`}
                   />
-                  <Stat label="Consistency" value="4 / 7 days" />
-                  <Stat label="Momentum" value="Rising" />
+                  <Stat label="Start gap" value={String(report.gapScoreStart ?? "—")} />
+                  <Stat label="End gap" value={String(report.gapScoreEnd)} />
                 </dl>
 
                 <p className="mt-6 font-mono text-[10px] text-muted-foreground">
-                  Narrative from simulated evidence · labeled mock data
+                  {report.simulated
+                    ? "Narrative may include simulated framing · generated via Gemini"
+                    : "Narrative from live evidence · generated via Gemini"}
                 </p>
               </div>
             </motion.article>
@@ -126,7 +170,7 @@ function Report() {
         </AnimatePresence>
 
         <AnimatePresence>
-          {generated && (
+          {report && proposal && (
             <motion.section
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
@@ -141,19 +185,19 @@ function Report() {
               </div>
 
               <p className="text-base leading-relaxed text-foreground">
-                {mock.identityEvolutionProposal.prompt}
+                {proposal.narrative}
               </p>
 
               <div>
-                <p className="label-eyebrow mb-2">Supporting evidence</p>
+                <p className="label-eyebrow mb-2">Proposed changes</p>
                 <ul className="space-y-2">
-                  {mock.identityEvolutionProposal.evidence.map((e) => (
+                  {proposal.proposedChanges.map((change) => (
                     <li
-                      key={e}
+                      key={`${change.action}-${change.attributeId}`}
                       className="flex items-start gap-2 text-sm text-muted-foreground"
                     >
                       <span className="mt-1.5 h-1 w-1 rounded-full bg-signal shrink-0" />
-                      {e}
+                      {change.action} · {change.attributeLabel} — {change.reason}
                     </li>
                   ))}
                 </ul>
@@ -161,9 +205,7 @@ function Report() {
 
               <p className="font-mono text-[11px] text-muted-foreground border-t border-border pt-4">
                 Proposed label:{" "}
-                <span className="text-foreground font-medium">
-                  {mock.identityEvolutionProposal.proposed}
-                </span>
+                <span className="text-foreground font-medium">{proposedLabel}</span>
               </p>
 
               {proposalChoice ? (
@@ -177,8 +219,7 @@ function Report() {
                   {proposalChoice === "accepted" ? (
                     <span className="flex items-center gap-2">
                       <Check className="h-4 w-4" strokeWidth={2} />
-                      Declared self updated to &ldquo;
-                      {mock.identityEvolutionProposal.proposed}&rdquo;. Dashboard now
+                      Declared self updated to &ldquo;{proposedLabel}&rdquo;. Dashboard now
                       measures against it.
                     </span>
                   ) : (
@@ -193,15 +234,29 @@ function Report() {
                 <div className="grid gap-3 border-t border-border pt-5 sm:grid-cols-2">
                   <button
                     onClick={() => {
-                      acceptIdentityEvolution();
-                      setProposalChoice("accepted");
+                      void acceptEvolution(proposal.proposalId)
+                        .then(() => {
+                          acceptIdentityEvolution();
+                          setProposalChoice("accepted");
+                          return refreshLiveData();
+                        })
+                        .catch((err) => {
+                          toast.error("Could not accept evolution", {
+                            description:
+                              err instanceof Error ? err.message : "Try again shortly.",
+                          });
+                        });
                     }}
                     className="rounded-full bg-foreground px-6 py-3.5 text-sm font-medium text-background hover:bg-foreground/90 transition-colors"
                   >
                     Accept update
                   </button>
                   <button
-                    onClick={() => setProposalChoice("kept")}
+                    onClick={() => {
+                      void rejectEvolution(proposal.proposalId)
+                        .then(() => setProposalChoice("kept"))
+                        .catch(() => setProposalChoice("kept"));
+                    }}
                     className="rounded-full border border-border px-6 py-3.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
                     Keep current identity

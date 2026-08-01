@@ -157,10 +157,12 @@ function GrowthFeed() {
         if (action) {
           setPreparedCard({
             id: action.id,
-            lens: action.type === "media" ? "Media" : "Micro-Action",
+            lens: action.type === "media" || action.type === "knowledge" ? "Media" : "Micro-Action",
             action: action.title,
             reasoning: action.explanation.whyNow,
             duration: "A focused next step",
+            hypothesisId: prepared.stack.hypothesisId,
+            hypothesisFamily: action.type,
           });
         }
         setFeedStatus("ready");
@@ -242,22 +244,47 @@ function GrowthFeed() {
   ) => {
     setResolvedIds((prev) => [...prev, id]);
     if (action === "accept") {
-      acceptIntervention(card);
-      toast.success("Gap score updated", {
-        description: "Intervention accepted — lattice strut filling in.",
+      void acceptIntervention(card).then(() => {
+        toast.success("Gap score updated", {
+          description: "Intervention accepted — logged to Trust Ledger.",
+        });
       });
     } else if (action === "snooze") {
-      snoozeIntervention(card);
-      toast("Snoozed", { description: "Logged as pending in the Trust Ledger." });
+      void snoozeIntervention(card).then(() => {
+        toast("Snoozed", { description: "Logged as pending in the Trust Ledger." });
+      });
     } else {
-      const crossed = dismissIntervention(card);
-      if (crossed) {
-        toast.error("Hypothesis failed", {
-          description: "System Unlearning: Media −40% · switched to Micro-Action.",
-        });
-      } else {
-        toast("Dismissed", { description: "Negative evidence logged." });
-      }
+      void dismissIntervention(card).then(async (crossed) => {
+        if (crossed) {
+          toast.error("Hypothesis failed", {
+            description: "System Unlearning: failed lens −40% · switched to Micro-Action.",
+          });
+          try {
+            const prepared = await getPreparedFeedIntervention();
+            const action =
+              prepared.stack.elements.find((element) => element.type === "micro_mission") ??
+              prepared.stack.elements[0];
+            if (action) {
+              setPreparedCard({
+                id: action.id,
+                lens:
+                  action.type === "media" || action.type === "knowledge"
+                    ? "Media"
+                    : "Micro-Action",
+                action: action.title,
+                reasoning: action.explanation.whyNow,
+                duration: "A focused next step",
+                hypothesisId: prepared.stack.hypothesisId,
+                hypothesisFamily: action.type,
+              });
+            }
+          } catch {
+            /* keep local micro-action fallback */
+          }
+        } else {
+          toast("Dismissed", { description: "Negative evidence logged to Trust Ledger." });
+        }
+      });
     }
   };
 

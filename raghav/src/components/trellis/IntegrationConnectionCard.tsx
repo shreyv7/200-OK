@@ -5,11 +5,12 @@ import {
   useConnectProvider,
   useRevokeProvider,
   useTriggerGithubSync,
+  useTriggerNotionSync,
   type IntegrationStatus,
 } from "@/lib/integrations/useIntegrations";
 
 interface IntegrationCardProps {
-  provider: "google-calendar" | "github";
+  provider: "google-calendar" | "github" | "notion";
   title: string;
   description: string;
   icon: ReactNode;
@@ -27,12 +28,15 @@ export function IntegrationConnectionCard({
 }: IntegrationCardProps) {
   const connectMutation = useConnectProvider();
   const revokeMutation = useRevokeProvider();
-  const syncMutation = useTriggerGithubSync();
+  const githubSyncMutation = useTriggerGithubSync();
+  const notionSyncMutation = useTriggerNotionSync();
 
   const [isConnecting, setIsConnecting] = useState(false);
 
   const isConnected = status?.isActive ?? false;
   const isExpired = status ? !status.isActive && status.revokedAt === null : false;
+  const syncMutation = provider === "notion" ? notionSyncMutation : githubSyncMutation;
+  const canSync = provider === "github" || provider === "notion";
 
   const handleConnect = async () => {
     setIsConnecting(true);
@@ -57,9 +61,9 @@ export function IntegrationConnectionCard({
   const handleSyncNow = async () => {
     try {
       const res = await syncMutation.mutateAsync();
-      toast.success(res.message || `Synced ${res.synced} events from GitHub`);
+      toast.success(res.message || `Synced ${res.synced} events from ${title}`);
     } catch (err: any) {
-      toast.error(err.message || "GitHub sync failed");
+      toast.error(err.message || `${title} sync failed`);
     }
   };
 
@@ -122,7 +126,7 @@ export function IntegrationConnectionCard({
         <div className="flex flex-wrap items-center gap-2 shrink-0 sm:self-center">
           {isConnected ? (
             <>
-              {provider === "github" && (
+              {canSync && (
                 <button
                   onClick={handleSyncNow}
                   disabled={syncMutation.isPending}

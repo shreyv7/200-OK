@@ -9,11 +9,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
+from sqlalchemy.orm import Session
+
 from app.agents.graphs.coordinator import build_coordinator_graph
 from app.agents.graphs.run_context import CoordinatorRunContext
 from app.schemas import DecisionPacket
 from app.services.recommendation.decision_consumer import consume_gap_update
-from app.services.recommendation.gap_snapshot import GapSnapshot
 from app.services.recommendation.onboarding_trigger import OnboardingConfirmEvent
 from app.services.recommendation.stack_state import get_active_stack
 from app.services.recommendation.warm_cache import WarmCacheResult, warm_cache_after_onboarding
@@ -51,7 +52,11 @@ def build_onboarding_decision_packet(event: OnboardingConfirmEvent) -> DecisionP
     return packet
 
 
-def on_onboarding_confirmed(event: OnboardingConfirmEvent) -> dict[str, Any]:
+def on_onboarding_confirmed(
+    event: OnboardingConfirmEvent,
+    *,
+    db: Session | None = None,
+) -> dict[str, Any]:
     """Schedule first Coordinator DecisionPacket; warm-cache is best-effort."""
     run_context = CoordinatorRunContext(
         run_id=f"onboard-{event.userId}-v{event.twinVersion}",
@@ -73,11 +78,17 @@ def on_onboarding_confirmed(event: OnboardingConfirmEvent) -> dict[str, Any]:
     graph = build_coordinator_graph()
     result = graph.invoke(state)
 
-    warm_result = warm_cache_after_onboarding(
-        event.userId,
-        packet,
-        run_id=run_context.run_id,
-    )
+    warm_result: WarmCacheResult
+    if db is not None:
+        warm_result = warm_cache_after_onboarding(
+            db,
+            event.userId,
+            packet,
+            run_id=run_context.run_id,
+        )
+    else:
+        warm_result = WarmCacheResult(ok=False, reason="no_db_session")
+
     result["warm_cache"] = {
         "ok": warm_result.ok,
         "reason": warm_result.reason,
@@ -86,9 +97,13 @@ def on_onboarding_confirmed(event: OnboardingConfirmEvent) -> dict[str, Any]:
     return result
 
 
-def emit_onboarding_confirmed(event: OnboardingConfirmEvent) -> dict[str, Any]:
+def emit_onboarding_confirmed(
+    event: OnboardingConfirmEvent,
+    *,
+    db: Session | None = None,
+) -> dict[str, Any]:
     """In-process emitter — Backend identity service calls after Twin v1 write."""
-    result = on_onboarding_confirmed(event)
+    result = on_onboarding_confirmed(event, db=db)
     for callback in _subscribers:
         callback(event)
     return result

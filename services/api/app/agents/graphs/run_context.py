@@ -9,6 +9,7 @@ TriggerType = Literal[
     "evidence.created",
     "manual",
     "onboarding.confirmed",
+    "stack.refresh",
     "report.requested",
     "evolution.requested",
     "evolution.accepted",

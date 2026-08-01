@@ -1,8 +1,9 @@
 # Product Requirements Document — TRELLIS
 
-**Agentic AI for Human Potential — IABTM Hackathon (24-hour build)**
+**Agentic AI for Human Potential — IABTM Hackathon**
 
-Version 1.2 · Team working doc · Status: locked for build
+Version 2.0 · Team working doc · Status: expanded current-scope build  
+*(v1.2 locked a 24-hour MVP cut. This revision pulls former “future / deferred / P2-if-time” items into **current scope**. Everything below is in-scope unless listed under Non-Goals.)*
 
 ---
 
@@ -20,47 +21,52 @@ Trellis is an agentic AI growth curator that continuously observes who you want 
 
 | Brief requirement | Trellis mechanism |
 |---|---|
-| "deeply understands aspirations, habits, evolving identity" | Identity Digital Twin built from a conversational AI interview + behavioral evidence, with periodic identity-evolution proposals that always require user confirmation |
-| "continuously curates" | Continuous Curation Engine re-evaluates and refreshes the Identity Stack whenever behavior, capacity, context, outcomes, resources, or confirmed aspirations materially change — without waiting for a user query |
-| "media, knowledge, AND experiences" | Identity Stack: a bottleneck-specific combination of media, knowledge, growth stories, tools, mentors, experiences, micro-missions, and reflection — never an isolated recommendation |
-| "right resources at the right time" | Moment Detector: intervenes at drift moments (doomscroll) and before leverage moments (calendar events) |
-| "passive scrolling into purposeful growth" | The Growth Feed morphs low-value scrolling into aligned micro-steps, live |
+| "deeply understands aspirations, habits, evolving identity" | Identity Digital Twin built from a conversational AI interview + behavioral evidence (OAuth connectors, screen-time ingest, in-app events), with identity-evolution proposals that always require user confirmation |
+| "continuously curates" | Continuous Curation Engine (event-driven + Celery Tier-2 jobs) re-evaluates and refreshes the Identity Stack whenever behavior, capacity, context, outcomes, resources, or confirmed aspirations materially change — without waiting for a user query |
+| "media, knowledge, AND experiences" | Identity Stack: a bottleneck-specific combination of media, knowledge, growth stories, tools, mentors, experiences, micro-missions, and reflection — never an isolated recommendation; retrieval via Tavily/YouTube, Qdrant semantic search, and Neo4j graph RAG |
+| "right resources at the right time" | Moment Detector: intervenes at drift moments (doomscroll) and before leverage moments (real calendar events) |
+| "passive scrolling into purposeful growth" | The Growth Feed morphs low-value scrolling into aligned micro-steps, live, with personalized live/cached resources |
 | "optimizes for human potential, not attention" | The system's single optimization target is the **Identity Gap score** — visible, explainable, falsifiable — not engagement |
 
 ---
 
 ## 3. Goals and Non-Goals
 
-### Goals (what winning looks like)
+### Goals (current scope — all required)
 
-1. A working end-to-end demo of the full agent loop: perceive → decide-when → decide-what → protect → act → measure.
-2. The Identity Gap score visibly moves during the live demo as a result of user action.
-3. At least one real (non-mocked) curation pipeline pulling live content from the internet.
-4. A defensible answer to "why is this agentic and not a chatbot?" and "why isn't this manipulative?"
-5. Judges remember three images: a feed that fought back, a score that moved, an AI that admitted a failed intervention.
+1. A working end-to-end product of the full agent loop: perceive → decide-when → decide-what → protect → act → measure.
+2. The Identity Gap score visibly moves as a result of user action and real evidence (GitHub, Calendar, Notion, screen time, in-app events).
+3. Real (non-mocked) curation pipelines: live web/YouTube retrieval, Qdrant semantic search, and Neo4j graph RAG feeding the Curator.
+4. Real multi-user auth (Clerk + Google), real OAuth evidence connectors, encrypted tokens at rest.
+5. Background jobs (Celery + Redis) for Tier-2 curation, sync, and leverage-moment scheduling.
+6. Growth Partner Match with real vector similarity (Qdrant), not a hard-coded mock card.
+7. Community surfaces in product: Growth Stories (seeded + submission path), mentor matching with journey similarity, contribution/reputation basics.
+8. A defensible answer to "why is this agentic and not a chatbot?" and "why isn't this manipulative?"
+9. Judges remember: a feed that fought back, a score that moved, an AI that admitted a failed intervention, and evidence that came from the user's real digital life.
 
-### Non-Goals (explicitly out of scope for 24 hours)
+### Non-Goals (still explicitly out of scope)
 
-- Real DOM injection into Instagram/Twitter (browser-extension platform risk; we own a mock feed instead).
-- Real OAuth integrations with GitHub/Calendar/Notion etc. (simulated evidence events, honestly labeled).
-- Real user-to-user matching, mentor outreach, or event booking. The MVP may show seeded mentor profiles and growth stories, clearly labeled as prototype data.
-- Mobile app. Web only.
-- Accounts/auth beyond a single demo profile.
-- Voice pipelines (STT/TTS latency risk on stage).
+- Real DOM injection into Instagram/Twitter (browser-extension platform risk). We own a first-party Growth Feed instead; third-party scrape remains out.
+- Native mobile apps (iOS/Android). Web only; screen-time evidence enters via upload/drop-box, not a mobile SDK.
+- Voice pipelines (STT/TTS).
+
+Everything formerly labeled “future roadmap,” “deferred,” “P2 if time,” or “we say this in the pitch, we don’t build it” is **in current scope** unless listed above.
 
 ---
 
 ## 4. Target User and Persona
 
-**Primary persona (used for demo seed data):** "Aarav," 22, wants to become *a confident public speaker and builder who ships projects*. His screen time says otherwise: 2.5 hrs/day short-form video, tutorials watched but nothing published, no events attended. Motivated but stuck in the consume-don't-create loop.
+**Primary persona (demo seed / fallback):** "Aarav," 22, wants to become *a confident public speaker and builder who ships projects*. His screen time says otherwise: 2.5 hrs/day short-form video, tutorials watched but nothing published, no events attended. Motivated but stuck in the consume-don't-create loop.
 
-**Broader user:** anyone with a stated growth aspiration whose daily digital behavior quietly diverges from it — the say–do gap. This is IABTM's exact audience (secondary note: Trellis's Identity Stack and Growth Feed map naturally onto IABTM's platform as an embedded curation layer later; we do not build for that now).
+**Production path:** every signed-in user completes their own Mirror Interview; no demo-user default in staging/prod. Seeded Aarav history remains an opt-in local/demo tool only.
+
+**Broader user:** anyone with a stated growth aspiration whose daily digital behavior quietly diverges from it — the say–do gap. Trellis’s Identity Stack and Growth Feed are designed to map onto IABTM as an embedded curation layer; **integration-ready evidence schema and MCP adapters are part of current scope**.
 
 ### Community philosophy
 
 Trellis believes that every person is both a learner and a future guide. As users grow, they can contribute stories, mentor others, recommend resources, and strengthen the ecosystem. Growth is not consumed individually — it compounds collectively.
 
-The 24-hour MVP demonstrates this philosophy with seeded Growth Stories and mentor profiles. Contribution workflows, reputation systems, and real mentor communication remain future platform capabilities.
+**Current scope includes:** seeded catalogs **and** user contribution workflows for Growth Stories, mentor profiles with journey/bottleneck matching (embedding + graph signals), and basic reputation / verification hooks tied to evidence — not follower count.
 
 ### Curation philosophy
 
@@ -74,8 +80,8 @@ Trellis assumes that identity, behavior, opportunities, capacity, and circumstan
 
 Trellis maintains two live models:
 
-- **Declared Self** — built from a 2-minute conversational AI onboarding interview ("who are you trying to become?"). Decomposed by the LLM into 3–5 identity attributes with observable behavioral markers (e.g. *Public Speaker* → speaks in front of others, publishes recordings, attends speaking events).
-- **Revealed Self** — built from a stream of **evidence events** (app usage, watch history, tasks completed, missions done). For the hackathon: 3 weeks of seeded simulated history, clearly labeled "simulated," plus real events generated live during the demo.
+- **Declared Self** — built from a conversational AI onboarding interview ("who are you trying to become?"). Decomposed by the LLM into 3–5 identity attributes with observable behavioral markers (e.g. *Public Speaker* → speaks in front of others, publishes recordings, attends speaking events).
+- **Revealed Self** — built from a stream of **evidence events** (app usage / screen time, watch history, GitHub commits, calendar attendance, Notion activity, tasks completed, missions done). Demo may still show labeled simulated history; production users accumulate **real** events from connectors and in-app actions.
 
 The distance between them is the **Identity Gap score (0–100)** — the primary outcome the system optimizes, where `0` means fully aligned and `100` means highly divergent. It is calculated deterministically from declared targets, weighted evidence, and a seven-day exponential recency decay (Section 9), never generated by an LLM. High-value creation contributes `+3.0` to `+5.0`, passive learning contributes `+1.0`, and low-value drift during a focus window contributes `−2.0` per 10 minutes; the resulting **Create:Consume ratio** makes the difference visible. A companion **Alignment score** is simply `100 − Gap`. A **Potential Bottleneck** layer interprets the evidence beneath that score to identify the current limiting factor — such as confidence, consistency, execution, accountability, knowledge, communication, focus, networking, discipline, or burnout. The Gap says *how far* the user is from the desired identity; the bottleneck says *what is most responsible right now*.
 
@@ -83,176 +89,203 @@ When the gap is widening (drift trigger) or a high-leverage moment approaches (c
 
 Every resource in the Stack answers three questions: **Why this? Why now? How does this reduce the Identity Gap?** Every intervention is logged as a hypothesis in the **Trust Ledger** and later marked *worked / failed* based on subsequent evidence. A **Guardian** layer can downgrade or cancel any intervention based on user capacity, and always explains itself.
 
-Identity is not treated as permanent. Periodically, an **Identity Evolution Agent** compares accumulated behavior and reflection against the current Declared Self. If a consistent new direction appears, it proposes — never silently applies — an update such as: "Your recent actions consistently resemble a startup founder more than a researcher. Would you like to update your identity?" The user must explicitly confirm every change.
+Identity is not treated as permanent. Periodically, an **Identity Evolution Agent** compares accumulated behavior and reflection against the current Declared Self. If a consistent new direction appears, it proposes — never silently applies — an update. The user must explicitly confirm every change.
 
 ### Continuous Curation Engine
 
-Trellis does not generate one-time recommendations. It continuously observes the user's aspirations, behavior, context, capacity, and outcomes, re-evaluating what should be curated next. Every meaningful state change creates a new curation cycle through the existing event-driven loop.
+Trellis does not generate one-time recommendations. It continuously observes the user's aspirations, behavior, context, capacity, and outcomes, re-evaluating what should be curated next. Every meaningful state change creates a new curation cycle through the event-driven loop **and** Celery Tier-2 / beat jobs.
 
 Eligible triggers include:
 
 - behavioral drift;
 - completed or dismissed interventions;
 - changing aspirations after explicit confirmation;
-- approaching calendar events;
+- approaching calendar events (real OAuth sync);
 - changes in available time or Capacity Slider state;
 - successful or failed experiments;
-- confirmed identity evolution; and
-- newly discovered resources that materially outperform the current selection.
+- confirmed identity evolution;
+- newly discovered resources that materially outperform the current selection (web, Qdrant, Neo4j);
+- connector syncs (GitHub, Calendar, Notion) and screen-time uploads.
 
 Each trigger invalidates only the affected assumptions, not the entire user model. The Curator dynamically re-ranks available resources, retains still-valid elements, replaces stale or failed elements, and continuously assembles the strongest current Identity Stack. The Guardian still controls whether, when, and at what intensity a refreshed Stack reaches the user.
 
-The objective is not simply to recommend content. It is to continuously maintain the best possible growth environment for the user.
-
-For the 24-hour MVP, this capability uses infrastructure already defined in this PRD: normalized evidence events, the local event bus, deterministic triggers, the existing reasoning agents, cached resource candidates, and Supabase persistence. No additional agent, scheduler, queue, integration, or background service is required.
+**Current-scope infrastructure for this loop:** normalized evidence events, deterministic Moment Detector, reasoning agents, Postgres persistence, Redis, Celery worker + beat, Tavily/YouTube adapters, Qdrant vector store, Neo4j graph RAG, and OAuth MCP adapters.
 
 ---
 
 ## 6. Feature Requirements
 
-Priority key: **P0 = must ship** (demo breaks without it) · **P1 = should ship** (major judge points) · **P2 = if time remains**.
+Priority key: **P0 = must ship** · **P1 = must ship for full product bar** · *(former P2 items are promoted into P0/P1 — nothing is “if time remains.”)*
 
 ### F1. Conversational Onboarding — "The Mirror Interview" (P0)
 
 - Chat UI, 4–6 LLM-driven questions max (aspiration, why, current habits, biggest blocker, weekly capacity).
 - LLM extracts a structured **Declared Self JSON**: identity attributes, each with 2–4 observable markers and a weight.
 - Output shown to user for confirmation/edit ("Did I get you right?") — this is also the consent moment.
+- Per real signed-in user (Clerk); no Aarav seed in the default signup path.
 - Acceptance: a judge can state any aspiration and get a sensible identity graph in < 20 seconds.
 
 ### F2. Evidence Engine + Revealed Self (P0)
 
-- A single normalized **evidence event schema**: `{timestamp, source, type, category, value, weight}` (e.g. `shortform_video_30min`, `mission_completed`, `article_read`, `event_attended`).
-- Seeded 21-day simulated history for the demo persona, stored in DB, visibly labeled **"simulated history"** in the UI.
+- A single normalized **evidence event schema**: `{timestamp, source, type, category, value, weight}` (e.g. `shortform_video_30min`, `mission_completed`, `article_read`, `event_attended`, `github_commit`, `screentime_app`).
+- Optional seeded 21-day simulated history for demos, stored in DB, visibly labeled **"simulated history"** in the UI.
 - Live events: any action taken in the app (mission completed, content read, feed scrolled, intervention dismissed) generates a real event through the same pipeline.
-- A dev-only "simulator panel" (hidden hotkey) to inject events live on stage (e.g. simulate 20 minutes of doomscrolling in 5 seconds).
+- Real connector events: GitHub, Google Calendar, Notion, and Screen Time upload — all `simulated=false` when from live OAuth/upload.
+- A dev-only "simulator panel" (hidden hotkey) to inject events live on stage.
 - Acceptance: every event, seeded or live, flows through one pipeline and updates the Revealed Self within 2 seconds.
 
 ### F3. Identity Gap Score + Lattice Visualization (P0)
 
 - Live score (0–100) computed from the explainable formula in Section 9; recomputed on every new event.
-- Visualization: a **trellis/lattice graphic** — one strut per identity marker; filled struts = evidence exists, bare struts = missing. Beside it, two trend lines (Declared trajectory vs Revealed trajectory) over the 21-day window.
-- The Dashboard Gap Score must have a **P0 tooltip/popover** showing: each identity attribute and `wᵢ`, declared target, positive creation contribution, passive-learning contribution, focus-drift penalty, recency decay, attribute deficit, final Gap, and `Alignment = 100 − Gap`.
-- Click any lattice strut → the exact evidence events that contributed to it, including timestamp, event weight, and decayed contribution.
-- Acceptance: score visibly changes on stage when an event fires; the complete arithmetic breakdown is available in one click and contains no LLM-generated number.
+- Visualization: a **trellis/lattice graphic** — one strut per identity marker; filled struts = evidence exists, bare struts = missing. Beside it, two trend lines (Declared trajectory vs Revealed trajectory).
+- The Dashboard Gap Score must have a tooltip/popover showing: each identity attribute and `wᵢ`, declared target, positive creation contribution, passive-learning contribution, focus-drift penalty, recency decay, attribute deficit, final Gap, and `Alignment = 100 − Gap`.
+- Click any lattice strut → the exact evidence events that contributed to it.
+- Acceptance: score visibly changes when an event fires; the complete arithmetic breakdown is available in one click and contains no LLM-generated number.
 
 ### F4. Growth Feed + In-Feed Interception — "The Catch" (P0)
 
-- An in-house, team-owned scrollable feed (mobile-frame web UI) mixing realistic low-value items (memes, gossip cards, shorts thumbnails) with neutral items. **We own this surface** — zero third-party platform risk, identical visual payoff.
+- An in-house, team-owned scrollable feed (mobile-frame web UI) mixing realistic low-value items with neutral items **and** personalized live/cached resource cards from the Identity Stack (YouTube/web).
 - The **Moment Detector is a deterministic JavaScript rule engine**, not an LLM call. It evaluates locally after every scroll event and must complete in `<50ms`.
-- Exact vulnerability rule: trigger immediately when `scroll_count >= 5` **and** `low_value_ratio > 0.70` inside the rolling 15-minute window **and** the timestamp falls within a declared focus period. Add a 10-minute cooldown after firing to prevent intervention spam.
-- The trigger decision stores its input values (`scroll_count`, `low_value_ratio`, window, focus-period match) so the UI can explain exactly why it fired. No network request is allowed on the trigger path.
-- On trigger, the next feed card **morphs in place** (animated transition) into an intervention card: a 1–3 minute step tied to the declared identity, with the agent's one-line reasoning displayed ("You're 25 min into low-value scroll during a speaking-practice week. This worked for you before.").
-- User can act, snooze, or dismiss. Dismissal is itself an evidence event (feeds the learning loop).
+- Exact vulnerability rule: trigger immediately when `scroll_count >= 5` **and** `low_value_ratio > 0.70` inside the rolling 15-minute window **and** the timestamp falls within a declared focus period. Add a 10-minute cooldown after firing.
+- The trigger decision stores its input values so the UI can explain exactly why it fired. No network request is allowed on the trigger path.
+- On trigger, the next feed card **morphs in place** into a prepared intervention (Tier-1 cache), with the agent's one-line reasoning displayed.
+- User can act, snooze, or dismiss. Dismissal is itself an evidence event.
 - Acceptance: the fifth qualifying scroll triggers the local decision in `<50ms`; the prepared intervention morph begins immediately, and the Gap score reacts to the resulting evidence event.
 
-### F5. Four-Lens Curator + Identity Stack (P0 core, P1 full)
+### F5. Four-Lens Curator + Identity Stack (P0)
 
-Whenever a meaningful state-change event starts a curation cycle, the Curator first diagnoses the highest-impact **Potential Bottleneck**, then continuously retrieves or reuses candidates, evaluates developmental fit, dynamically re-ranks them, replaces expired or failed selections, and assembles the strongest current Identity Stack:
+Whenever a meaningful state-change event starts a curation cycle, the Curator first diagnoses the highest-impact **Potential Bottleneck**, then continuously retrieves or reuses candidates (live web, YouTube, Qdrant, Neo4j), evaluates developmental fit, dynamically re-ranks them, replaces expired or failed selections, and assembles the strongest current Identity Stack:
 
-1. **Next Step (P0)** — the smallest aligned action + one matched piece of real media. Media is continuously curated from live web/YouTube search and the cache, then dynamically re-ranked for *developmental fit* (goal distance, difficulty, readiness) — not popularity. This is our one guaranteed-real retrieval pipeline.
-2. **Missing Action / Bottleneck (P0)** — diagnoses the primary limiting factor (confidence, consistency, execution, accountability, knowledge, communication, focus, networking, discipline, or burnout), names the evidence behind it ("Your bottleneck isn't learning, it's publishing"), and generates a micro-mission targeting it. Pure structured LLM analysis over evidence data — cheap and extremely demo-strong.
-3. **Real-World Opportunity (P1)** — a nearby experience: meetup, Toastmasters, workshop, event. Live web search where possible; a curated pre-fetched Pune events list as fallback, labeled as such.
-4. **Outside Voice (P2)** — a cross-domain analogy (jazz, aviation, sport) with explicit "why this structurally fits your pattern" reasoning, constrained to 5 pre-vetted source domains.
+1. **Next Step (P0)** — the smallest aligned action + one matched piece of real media. Media is continuously curated from live web/YouTube search and the cache, then dynamically re-ranked for *developmental fit* — not popularity.
+2. **Missing Action / Bottleneck (P0)** — diagnoses the primary limiting factor from the fixed taxonomy, names the evidence behind it, and generates a micro-mission targeting it.
+3. **Real-World Opportunity (P0)** — a nearby experience: meetup, Toastmasters, workshop, event. Live web search where possible; curated Pune events list as labeled fallback.
+4. **Outside Voice (P0)** — a cross-domain analogy with explicit "why this structurally fits your pattern" reasoning, constrained to pre-vetted source domains.
 
-- The Curator continuously assembles and personalizes an **Identity Stack** from eight resource types: **Media, Knowledge, Growth Story, Mentor, Tool, Real-World Experience, Micro Mission, and Reflection**. It selects only the combination justified by the current bottleneck; it does not fill slots mechanically.
-- Every selected element carries three concise explanation fields: **Why this? Why now? How does this reduce the Identity Gap and increase the Alignment Score?** (Reducing the Alignment Score would be incorrect because higher Alignment is better.)
-- Each Stack has a `curated_at` time and a logical validity condition within the existing intervention record. A trigger causes re-evaluation; replacement occurs only when the candidate is materially better or the current element is stale, failed, unsafe, or mismatched to capacity.
-- Acceptance: every intervention contains at least one action and one resource; at least the Next Step lens curates real live content; the current bottleneck and all three explanations are visible; dismissal, completion, and capacity changes each cause the next Stack to be re-evaluated through the same event-driven path.
+- The Curator assembles an **Identity Stack** from eight resource types: **Media, Knowledge, Growth Story, Mentor, Tool, Real-World Experience, Micro Mission, and Reflection**.
+- Every selected element carries: **Why this? Why now? How does this reduce the Identity Gap and increase Alignment?**
+- Replacement occurs only when the candidate is materially better or the current element is stale, failed, unsafe, or mismatched to capacity.
+- Acceptance: every intervention contains at least one action and one resource; Next Step uses real live content when providers are up; dismissal, completion, capacity, identity confirm, and connector sync each re-evaluate the Stack through the same event-driven + Celery path.
 
-### F5A. Growth Stories (P1 — seeded MVP)
+### F5A. Growth Stories (P0)
 
-- Authentic first-person growth journeys from people who faced a similar bottleneck and later made meaningful progress: overcoming public-speaking fear, building a first startup, recovering from failure, developing consistency, or changing careers.
-- Stories are dynamically re-ranked by **stage and bottleneck match**, not popularity. Each card includes the Curator's explanation, e.g. "This creator faced the same bottleneck you're facing today: fear of shipping publicly."
-- MVP: 8–12 pre-written, seeded community stories with source/author labels and structured tags (`identity`, `stage`, `bottleneck`, `outcome`). No story-submission workflow is built.
-- Acceptance: the Curator can select one relevant seeded story and explain its match; stories never appear as generic motivational filler.
+- Authentic first-person growth journeys matched by **stage and bottleneck** (catalog + Qdrant / Neo4j ranking).
+- Seeded catalog (8–12+) **and** a user story-submission workflow with source/author labels and structured tags.
+- Acceptance: Curator selects a relevant story with an explanation; submissions enter the same catalog/retrieval path after validation.
 
-### F5B. Tool Curation (P1 — seeded catalog)
+### F5B. Tool Curation (P0)
 
-- The Curator may continuously curate software, platforms, communities, or productivity systems when a tool removes the user's current friction: Cursor, Notion, Obsidian, Slack/Discord communities, GitHub, Google Calendar, Anki, Figma, or Linear.
-- Every tool selection includes one line stating why it is the best next tool for the user's current stage. A tool is selected only when it enables an action; never as a standalone directory listing.
-- MVP: a seeded catalog of 10–15 tools with domains, stages, bottlenecks, URLs, and safe starter actions. No external tool integration is required.
-- Acceptance: one Identity Stack can include a tool tied directly to its micro-mission and bottleneck.
+- Curator may select software/platforms/communities when a tool removes current friction.
+- Seeded catalog of tools with domains, stages, bottlenecks, URLs, and safe starter actions; Notion/GitHub/Calendar connections deepen tool recommendations when connected.
+- Acceptance: an Identity Stack can include a tool tied directly to its micro-mission and bottleneck.
 
-### F5C. Optional Mentor Network (P1 — prototype)
+### F5C. Mentor Network (P0)
 
-- Users may eventually become mentors after demonstrating experience through evidence in a specific domain. Mentor candidates may include community mentors, experienced users, professionals, creators, and domain experts.
-- Mentors are matched by journey, strengths, stage, and current bottleneck — never follower count or popularity.
-- MVP: 5–8 seeded mentor profiles and a dynamically curated mentor card only. No outreach, scheduling, messaging, verification, or live matching.
-- Acceptance: the Curator can dynamically select one seeded mentor and explain the journey/bottleneck match. Future roadmap: AI-assisted matching using Identity Gap and journey similarity.
+- Mentors matched by journey, strengths, stage, and current bottleneck — never follower count — using embedding similarity and/or graph path features.
+- Seeded mentor profiles **and** paths for experienced users to become mentor candidates from evidence.
+- Outreach/scheduling/messaging are in scope as product surfaces (even if MVP-thin); verification and reputation use evidence signals.
+- Acceptance: Curator selects a mentor with journey/bottleneck explanation; matching is not a static hard-coded list.
 
 ### F6. Guardian / Consent Layer — "The Protection" (P0)
 
 - Runs before any intervention reaches the user. Checks: interventions-today count (cap 5), time since last, user-declared capacity, recent dismissal rate.
-- Can **downgrade** (full mission → 90-second version), **delay**, or **cancel** — and always shows a plain-language reason.
-- The Dashboard exposes an **Interactive Live Capacity Slider (0–100%)**. `0%` means recovery-only capacity; `100%` means full planned capacity. The selected value is stored as a real evidence/context event.
-- Every active intervention is generated or cached in three forms (`full`, `light`, `micro`). Slider thresholds map deterministically: `67–100 → full`, `34–66 → light`, `0–33 → micro`. Dragging the slider swaps the active card locally without a page refresh or LLM/API call.
-- Example stage transition: a 15-minute speaking-practice mission morphs into a 60-second mental rehearsal as the slider moves below 34%, with the explanation: "Capacity changed; preserving momentum without adding load."
-- Acceptance: dragging the slider updates every visible intervention card in `<100ms`, preserves the intervention hypothesis ID, and creates no extra API request. **This remains the scripted emotional peak of the demo.**
+- Can **downgrade**, **delay**, or **cancel** — and always shows a plain-language reason.
+- Interactive Live Capacity Slider (0–100%) stores capacity as a real evidence/context event.
+- Every active intervention is generated or cached in three forms (`full`, `light`, `micro`). Slider thresholds: `67–100 → full`, `34–66 → light`, `0–33 → micro`. Dragging swaps the active card locally without a page refresh or LLM/API call.
+- Acceptance: dragging the slider updates every visible intervention card in `<100ms`, preserves the intervention hypothesis ID, and creates no extra API request.
 
-### F7. Trust Ledger + Reflection Loop (P0 core, P1 full)
+### F7. Trust Ledger + Reflection Loop (P0)
 
 - Every intervention logged as: hypothesis → what was delivered → outcome window → verdict (**worked / failed / pending**) based on subsequent evidence + optional one-tap self-report.
-- The P0 core logs delivery, acceptance, snooze, and dismissal synchronously and displays explicit **System Unlearning** tags whenever a failure threshold is crossed.
-- Example entry:
-  - **❌ Failed Hypothesis:** "10-min Public Speaking Video" — dismissed 3 times.
-  - **💡 System Adaptation:** "Lowered Media Lens weight by 40%. Switched primary lens to Micro-Action."
-- MVP failure rule: the same hypothesis family dismissed three times within 14 days becomes `failed`. The third dismissal immediately updates its lens weight using a deterministic rule and requests an alternative from an already prepared/cached lens. A single dismissal remains negative evidence, not proof of failure.
-- Full P1 Ledger shows the entire history, including successes, failures, adaptations, and pending outcome windows. Seed with ~10 past entries; the demo hypothesis begins with two labeled historical dismissals so the live third dismissal visibly crosses the rule.
-- Acceptance: a stage dismissal writes the event and updates the Ledger in `<250ms`; the **Hypothesis Failed** and **System Unlearning** states appear without refresh; subsequent curation no longer selects the rejected primary lens.
+- Logs delivery, acceptance, snooze, and dismissal synchronously; displays **System Unlearning** tags when a failure threshold is crossed.
+- Failure rule: the same hypothesis family dismissed three times within 14 days becomes `failed`; lens weights update deterministically; an alternate prepared lens is requested.
+- Full Ledger history: successes, failures, adaptations, and pending outcome windows.
+- Acceptance: a dismissal writes the event and updates the Ledger in `<250ms`; subsequent curation no longer selects the rejected primary lens.
 
-### F8. Weekly Becoming Report (P1)
+### F8. Weekly Becoming Report (P0)
 
-- One-click LLM-generated narrative over the evidence window: identity movement, not hours ("Fearful → attended 2 events → initiated 5 conversations → Confidence marker +9"). Rendered as a clean shareable card.
-- Acceptance: generates in < 10 seconds from live DB state.
+- One-click LLM-generated narrative over the evidence window: identity movement, not hours. Rendered as a clean shareable card.
+- Acceptance: generates in < 10 seconds from the signed-in user's live DB state.
 
-### F9. Leverage-Moment Trigger (P2)
+### F9. Leverage-Moment Trigger (P0)
 
-- Simulated calendar with 2–3 seeded upcoming events (e.g. "college presentation, Friday"). Agent schedules the right input to land *before* the moment ("Your talk is in 3 days — tonight: this 6-min clip on openings + record a 60-second run-through").
-- Acceptance: one pre-seeded leverage intervention visible in the plan view.
+- **Real Google Calendar OAuth sync** powers upcoming events in plan view (seeded events remain a labeled fallback only).
+- Agent schedules the right input to land *before* the moment via Celery beat / Tier-2 jobs ("Your talk is in 3 days — tonight: this clip + 60-second run-through").
+- Acceptance: a connected calendar surfaces a leverage intervention in plan view before a high-signal event; disconnect stops ingest immediately.
 
-### F10. Growth Partner Match (P2 — mock only)
+### F10. Growth Partner Match (P0)
 
-- Embedding similarity over 5 fake user profiles → "someone at your stage with your goal" card with a proposed weekly accountability check-in. Clearly labeled prototype.
+- Embedding similarity over partner profiles via **Qdrant** (with deterministic local fallback when the vector store is unavailable).
+- Card proposes a weekly accountability check-in; badges must honestly label **Qdrant Cloud Match** vs simulated fallback.
+- Acceptance: match reflects stage/goal/bottleneck similarity; not a hard-coded single prototype card.
 
-### F11. Identity Evolution Review (P1 — confirmation required)
+### F11. Identity Evolution Review (P0 — confirmation required)
 
-- The Identity Evolution Agent periodically compares recent evidence, reflection themes, and the existing Declared Self. For the MVP, this runs on demand from the Weekly Report rather than as background infrastructure.
-- It may propose that the user add, remove, or reweight an identity attribute when evidence is consistent across multiple events; it must cite the supporting evidence.
-- Example: "You originally wanted to become a public speaker, but your recent behavior suggests a growing interest in entrepreneurship."
-- No proposed update changes the Declared Self or Gap formula until the user explicitly selects **Accept update**. **Keep current identity** must be equally prominent.
-- MVP: one seeded evolution proposal generated from the demo history; no autonomous background schedule.
-- Acceptance: accepting the proposal creates a versioned Declared Self; rejecting it leaves all identity data unchanged.
+- Identity Evolution Agent compares recent evidence, reflection themes, and Declared Self (on demand from Weekly Report **and** as a background/scheduled proposal when evidence is consistent).
+- May propose add/remove/reweight of attributes; must cite supporting evidence.
+- No update applies until the user selects **Accept update**. **Keep current identity** equally prominent.
+- Acceptance: accepting creates a versioned Declared Self and triggers re-curation; rejecting leaves identity unchanged.
+
+### F12. Screen Time & Device Telemetry (P0)
+
+- Settings / Integrations drop-box: user uploads a Screen Time screenshot or posts structured app-usage JSON.
+- Pipeline normalizes app minutes into evidence events (creation / passive learning / focus drift) through the same universal ingest path.
+- Acceptance: an upload updates Revealed Self and Gap without bypassing the evidence pipeline.
+
+### F13. Vector Search (Qdrant) (P0)
+
+- Qdrant Cloud collections for catalog stories/tools/mentors, partner profiles, and identity-adjacent documents.
+- Semantic search API + dashboard Vector Search UI; reindex endpoint for catalog vectors.
+- Acceptance: with `VECTOR_DB_PROVIDER=qdrant` and credentials set, semantic search returns scored hits; with provider `fake`/no URL, product degrades gracefully.
+
+### F14. Graph RAG (Neo4j) (P0)
+
+- Neo4j models users, identity attributes, markers, bottlenecks, resources, domains, and hypothesis families.
+- Multi-hop retrieval connects current deficits to Identity Stack candidates; dismissed families are excluded; path facts feed Curator explanations.
+- Acceptance: graph context is available to curation; failures fall back to catalog/web retrieval without blocking the feed morph.
+
+### F15. Auth, Ownership, and Integrations Hub (P0)
+
+- Clerk JWT auth; Google social login; per-user provisioning; ownership isolation across users.
+- Integrations UI: connect / status / disconnect / reconnect for Google Calendar, GitHub, Notion; Screen Time panel; honesty badges on evidence sources.
+- Token encryption at rest (Fernet); no plaintext tokens in logs or API responses.
+- Acceptance: two users never see each other’s data; revoke stops ingest immediately; history preserved.
 
 ---
 
 ## 7. Data Sources — Real vs Simulated (honesty map)
 
-| Data | Source in 24h build | Real or simulated |
+| Data | Source in current build | Real or simulated |
 |---|---|---|
 | Aspirations, values, capacity | Live AI interview (F1) | **Real** |
-| 21-day behavioral history | Seeded generator script | **Simulated, labeled** |
-| In-app behavior (scrolls, missions, dismissals) | App event pipeline | **Real** |
-| Doomscroll telemetry | Owned mock feed + simulator panel | **Simulated surface, real pipeline** |
-| Curated media | Web search / YouTube Data API, LLM re-ranked | **Real, live** |
-| Local events/opportunities | Web search + pre-fetched Pune list fallback | **Real with labeled fallback** |
-| Growth Stories | Seeded community-story catalog | **Simulated prototype data, labeled** |
-| Tool catalog | Seeded structured catalog with real product URLs | **Real tools, curated metadata** |
-| Mentor profiles | 5–8 seeded profiles | **Simulated prototype data, labeled** |
-| Calendar | Seeded JSON | **Simulated, labeled** |
-| Partner profiles | 5 fake profiles | **Simulated, labeled** |
+| Auth / identity of user | Clerk + Google OAuth | **Real** |
+| 21-day behavioral history | Opt-in seed script (demo only) | **Simulated, labeled** |
+| In-app behavior | App event pipeline | **Real** |
+| Doomscroll telemetry | Owned Growth Feed + simulator | **Owned surface, real pipeline** |
+| Screen time | Upload / structured JSON ingest (F12) | **Real user upload → real pipeline** |
+| Curated media | Tavily + YouTube Data API, LLM re-ranked | **Real, live** (+ labeled fallback) |
+| Semantic / partner match | Qdrant Cloud + embeddings | **Real when configured** (+ local fallback) |
+| Graph context | Neo4j Graph RAG | **Real when configured** (+ fallback) |
+| Local events/opportunities | Web search + Pune list fallback | **Real with labeled fallback** |
+| Growth Stories | Seeded catalog + user submissions | **Mixed; labeled** |
+| Tool catalog | Seeded catalog + connected tools | **Real tools, curated metadata** |
+| Mentor profiles | Seeded + evidence-based mentor candidates | **Mixed; labeled** |
+| Calendar | Google Calendar OAuth sync | **Real** (+ seeded fallback labeled) |
+| GitHub creation evidence | GitHub OAuth sync | **Real** |
+| Notion activity | Notion OAuth sync | **Real** |
+| Partner profiles | Vector-matched profiles (Qdrant) | **Real matching over catalog/fixtures until multi-user pool grows** |
 
-Principle carried from the Forge plans: every source feeds one Evidence Intelligence pipeline (normalize → dedupe → score → update twin); no module consumes raw source data directly. Future MCP integrations (GitHub, Calendar, Notion, YouTube history) plug into the same schema — we say this in the pitch, we don't build it.
+Principle: every source feeds one Evidence Intelligence pipeline (normalize → dedupe → score → update twin); no module consumes raw source data directly. **MCP / OAuth connectors are current-scope builds**, not pitch-only roadmap.
 
 ### MCP data bridge contract
 
-The MVP uses simulated MCP payloads, but they must enter the application through the same adapter boundary future OAuth/MCP connectors will use. Provider-specific fields must never leak into scoring or agents.
+All providers — live OAuth or fixtures — enter through the same adapter boundary. Provider-specific fields must never leak into scoring or agents.
 
 ```typescript
 interface EvidenceEvent {
   id: string;
   userId: string;
   timestamp: string;
-  source: 'github' | 'google_calendar' | 'youtube' | 'notion' | 'trellis';
+  source: 'github' | 'google_calendar' | 'youtube' | 'notion' | 'screentime' | 'trellis';
   type: string;
   category: 'creation' | 'passive_learning' | 'focus_drift' | 'reflection';
   identityAttributeIds: string[];
@@ -263,7 +296,7 @@ interface EvidenceEvent {
 }
 
 interface RawMCPPayload {
-  sourceProvider: 'github' | 'google_calendar' | 'youtube' | 'notion';
+  sourceProvider: 'github' | 'google_calendar' | 'youtube' | 'notion' | 'screentime';
   rawPayload: Record<string, any>;
 }
 
@@ -283,9 +316,9 @@ Trellis has five reasoning agents plus one deterministic Moment Detector over sh
 | Agent | Decides | Tools/data it alone has |
 |---|---|---|
 | **Identity Modeler** | What the Declared and Revealed Selves are; the Gap score and Potential Bottleneck | Interview extraction, evidence aggregates, scoring formula, bottleneck taxonomy |
-| **Identity Evolution Agent** | Whether accumulated evidence justifies proposing a change to the Declared Self | Versioned identity history, evidence trends, optional reflective check-ins; may propose but never apply without confirmation |
-| **Moment Detector (deterministic controller)** | *When* to act | Local event stream, explicit JS trigger rules, calendar; no LLM |
-| **Curator** | Continuously retrieves, evaluates, dynamically re-ranks, replaces, and assembles the most developmentally relevant combination of media, knowledge, stories, mentors, tools, experiences, micro-missions, and reflections; explains every choice | Web/YouTube search, story/tool/mentor catalogs, events list, Trust Ledger outcomes, current capacity, active Stack validity |
+| **Identity Evolution Agent** | Whether accumulated evidence justifies proposing a change to the Declared Self | Versioned identity history, evidence trends, reflective check-ins; may propose but never apply without confirmation |
+| **Moment Detector (deterministic controller)** | *When* to act | Local event stream, explicit JS trigger rules, calendar proximity; no LLM |
+| **Curator** | Continuously retrieves, evaluates, dynamically re-ranks, replaces, and assembles the Identity Stack; explains every choice | Web/YouTube search, Qdrant semantic retrieval, Neo4j graph RAG, story/tool/mentor catalogs, Trust Ledger outcomes, capacity, Stack validity |
 | **Guardian** | *Whether/how much* reaches the user | Capacity state, intervention budget, dismissal history |
 | **Reflection Agent** | Whether it *worked* | Post-window evidence, self-reports; writes verdicts, updates lens weights |
 
@@ -302,7 +335,7 @@ Detect Change
   ↓
 Re-evaluate Development Needs
   ↓
-Retrieve Better Resources
+Retrieve Better Resources (web / YouTube / Qdrant / Neo4j)
   ↓
 Assemble New Identity Stack
   ↓
@@ -315,27 +348,27 @@ Update User Model
 Repeat Continuously
 ```
 
-This loop is the lifetime operating model of Trellis, not a sequence that runs only when the user opens a chat or requests a recommendation. Any eligible state-change event enters the same loop. The system may decide to preserve the current Stack when it remains best, replace only one stale element, downgrade it through the Guardian, or assemble a new Stack.
+This loop is the lifetime operating model of Trellis. Any eligible state-change event enters the same loop. The system may preserve the current Stack, replace only one stale element, downgrade through the Guardian, or assemble a new Stack.
 
-In the MVP, the loop runs event-driven and in-process using the existing local event bus and five reasoning agents plus the deterministic Moment Detector. Seeded events demonstrate longer-term continuity; live scroll, completion, dismissal, capacity, and experiment events demonstrate continuous adaptation on stage. Identity evolution remains invoked from the Weekly Report and requires confirmation. No cron infrastructure or additional agent is introduced.
+**Current-scope runtime:** event-driven request path (Tier 0/1) plus Celery worker/beat for Tier-2 reasoning, connector sync, pre-warm, and calendar leverage scheduling. Identity evolution requires confirmation. Seeded events remain optional for demos; live connectors and scrolls demonstrate continuous adaptation.
 
 **Why agentic (the judge answer):** a recommender ranks items when asked. Trellis continuously monitors meaningful changes, diagnoses the actual limiting factor, re-evaluates whether the current Stack is still best, dynamically assembles a better multi-resource experience when needed, explains every choice, protects the user from its own eagerness, then measures the outcome and changes future curation because of it. It can also notice that the destination itself may be evolving, while preserving human authority over any identity change. Remove the autonomous, persistent loop and the product ceases to exist.
 
 ### Tiered latency architecture
 
-- **Tier 0 — synchronous deterministic (`<100ms`):** scroll trigger evaluation, Gap recomputation, capacity-tier swapping, dismissal logging, failure-threshold checks, lens-weight updates, and optimistic UI state. These paths never call Gemini, Bedrock, Tavily, or Supabase before rendering.
-- **Tier 1 — prepared/cache-first (`<300ms` target):** fetch a pre-generated intervention variant or cached retrieval result from client state/Supabase. The trigger path always has at least one prepared intervention.
-- **Tier 2 — asynchronous reasoning/retrieval (`1–10s`, never blocks interaction):** Gemini bottleneck analysis and explanation, Tavily/YouTube retrieval, weekly reports, and identity-evolution proposals. Results continuously refresh the candidate pool, prepare the *next* intervention, and update the current Stack only when the replacement policy permits.
+- **Tier 0 — synchronous deterministic (`<100ms`):** scroll trigger evaluation, Gap recomputation, capacity-tier swapping, dismissal logging, failure-threshold checks, lens-weight updates, and optimistic UI state. These paths never call Gemini, Bedrock, Tavily, Qdrant, Neo4j, or the DB write path before rendering the morph.
+- **Tier 1 — prepared/cache-first (`<300ms` target):** fetch a pre-generated intervention variant or cached retrieval result. The trigger path always has at least one prepared intervention.
+- **Tier 2 — asynchronous reasoning/retrieval (`1–10s`, never blocks interaction):** Gemini bottleneck analysis and explanation, Tavily/YouTube retrieval, Qdrant/Neo4j enrichment, weekly reports, identity-evolution proposals, connector sync. Results refresh the candidate pool and prepare the *next* intervention.
 
 ### Retrieval fallback logic
 
-Every search request follows one adapter-controlled chain:
+Every search / retrieval request follows an adapter-controlled chain:
 
-1. Return a fresh matching Supabase cache entry immediately if one exists.
-2. Otherwise call Tavily with a hard timeout of 1.5 seconds (YouTube API only for video-specific metadata).
-3. Validate that each result has a title, URL, extract, and source; persist valid results to Supabase.
+1. Return a fresh matching cache entry immediately if one exists.
+2. Otherwise call Tavily (1.5s timeout) and/or YouTube for video metadata; optionally enrich with Qdrant semantic hits and Neo4j multi-hop context.
+3. Validate that each result has a title, URL, extract, and source; persist valid results.
 4. On timeout, quota exhaustion, malformed results, or network failure, use a pre-fetched seeded resource/event set matched by identity and bottleneck.
-5. Show a source badge — **Live web**, **Cached web**, or **Curated fallback** — so the stage never implies seeded retrieval was live.
+5. Show a source badge — **Live web**, **Cached web**, **Curated fallback**, **Qdrant**, or **Graph** — so the product never implies seeded retrieval was live.
 
 Retrieval failure must never produce an empty intervention or block the deterministic feed morph.
 
@@ -343,7 +376,7 @@ Retrieval failure must never produce an empty intervention or block the determin
 
 ## 9. Identity Gap Score (explainable formula)
 
-The LLM never calculates this score. It can classify evidence into identity attributes, but deterministic TypeScript performs all arithmetic.
+The LLM never calculates this score. It can classify evidence into identity attributes, but deterministic code performs all arithmetic.
 
 For identity attribute \(i\):
 
@@ -377,10 +410,10 @@ Normalization by \(D_i\) and clamping are required so different target units can
 | Event class | Examples | Weight |
 |---|---|---:|
 | High-value creation/action | GitHub commit, published post, completed mission, attended event | `+3.0` to `+5.0` (fixed per event subtype) |
-| Passive learning | Video watched, article read | `+1.0` |
-| Low-value focus drift | Doomscrolling during a declared focus window | `−2.0` per completed 10 minutes |
+| Passive learning | Video watched, article read, focused app time | `+1.0` |
+| Low-value focus drift | Doomscrolling / short-form during a declared focus window | `−2.0` per completed 10 minutes |
 
-Concrete MVP subtype weights are configuration constants, not model output: completed mission `+3.0`, GitHub commit `+4.0`, published artifact `+5.0`, attended experience `+4.0`, passive item completed `+1.0`, focus drift `−2.0/10 min`.
+Concrete subtype weights are configuration constants, not model output: completed mission `+3.0`, GitHub commit `+4.0`, published artifact `+5.0`, attended experience `+4.0`, passive item completed `+1.0`, focus drift `−2.0/10 min`.
 
 ### Create:Consume ratio
 
@@ -394,7 +427,7 @@ DriftPoints = abs(Σ low-value focus-drift negative contributions)
 CreateConsumeRatio = CreatePoints / max(1, ConsumePoints + DriftPoints)
 ```
 
-A ratio `<1` means consumption/drift outweighs creation; `=1` means balance; `>1` means action outweighs consumption. The ratio is diagnostic and drives the Missing Action lens; it is not a second optimization target. Focus drift also directly lowers \(R_i\), so its impact is visible in both the Gap breakdown and this ratio.
+A ratio `<1` means consumption/drift outweighs creation; `=1` means balance; `>1` means action outweighs consumption. The ratio is diagnostic and drives the Missing Action lens; it is not a second optimization target.
 
 The Dashboard popover required by F3 lists the exact values above and the events that produced them. Secondary displayed metrics derived from the same pipeline are **Consistency** (evidence spread across days) and **Momentum** (seven-day Gap delta).
 
@@ -412,57 +445,68 @@ The initial taxonomy is fixed: confidence, consistency, execution, accountabilit
 
 ## 10. UX — Screens
 
-1. **Onboarding chat** (F1) → confirmation card of the extracted identity graph.
-2. **Dashboard**: lattice visualization + Gap score with arithmetic popover + Create:Consume ratio + current Potential Bottleneck + trend lines + momentum + today's expanded Identity Stack + interactive Capacity Slider (0–100%).
-3. **Growth Feed** (F4): phone-frame scrollable feed; intervention cards morph inline.
-4. **Trust Ledger** (F7): experiment history with worked/failed/pending verdicts.
-5. **Weekly Report** (F8): narrative card plus an optional, explicitly confirmable Identity Evolution proposal (F11).
-6. Hidden **simulator panel** (dev hotkey): inject doomscroll burst, advance time, fire calendar trigger.
+1. **Auth** — Clerk sign-in / sign-up (Google social).
+2. **Onboarding chat** (F1) → confirmation card of the extracted identity graph.
+3. **Dashboard**: lattice + Gap popover + Create:Consume + bottleneck + trend lines + Identity Stack + Capacity Slider + Vector Search bar.
+4. **Growth Feed** (F4): phone-frame scrollable feed; intervention cards morph inline; live resource cards interleaved.
+5. **Trust Ledger** (F7): experiment history with worked/failed/pending verdicts and System Unlearning.
+6. **Weekly Report** (F8): narrative card + confirmable Identity Evolution proposal (F11).
+7. **Settings / Integrations**: Calendar, GitHub, Notion connect/disconnect; Screen Time drop-box; honesty badges.
+8. **Plan view**: leverage moments from real calendar + scheduled pre-event interventions.
+9. Hidden **simulator panel** (dev hotkey): inject doomscroll burst, advance time, fire calendar trigger.
 
 Design language: calm, plant/architecture motif (trellis lattice), no gamification confetti, no streaks — the anti-attention aesthetic is part of the pitch.
 
 ---
 
-## 11. Tech Stack (vibe-coding optimized)
+## 11. Tech Stack (current architecture)
 
-- **Frontend:** Next.js + React + Tailwind + shadcn/ui; Framer Motion for the feed-morph animation; Recharts for trends. Single repo, deployed on Vercel (localhost fallback for demo).
-- **Backend:** Next.js API routes (no separate server). Event pipeline = one POST endpoint + processing function.
-- **Database:** Supabase Postgres using the Supabase JavaScript client. Use a single demo profile and anonymous access protected by Row Level Security; do not spend hackathon time building full authentication.
-- **LLM — primary:** Google Gemini API free tier. Use a fast Gemini model for all latency-sensitive agent calls: interview extraction, bottleneck diagnosis, curation and explanation, Guardian reasoning, weekly reports, identity-evolution proposals, and optional cross-domain analogies. Require structured JSON outputs and keep prompts/model names behind one provider adapter.
-- **LLM — fallback:** AWS Bedrock, enabled only if Gemini's free-tier quotas or reliability become a blocker. The provider adapter must expose one shared `generateStructured()` interface so switching providers requires an environment-variable change rather than rewriting agents. Preconfigure and test one Bedrock model before the demo if AWS access is available.
-- **Retrieval:** **Tavily Search API** as the primary web-search service. It is purpose-built for AI agents, returns clean extracted text plus source URLs, requires little parsing, and currently offers 1,000 free credits per month without a credit card — sufficient for the hackathon. Use YouTube Data API v3 only when video-specific metadata is required. Cache successful search results in Supabase and ship a small pre-fetched fallback set for stage reliability.
-- **Realtime:** local client event bus/React state for all sub-second demo interactions, followed by asynchronous Supabase persistence. Use 2-second polling only to reconcile cross-page state; skip websockets.
-- **Seed script:** generates the 21-day evidence history, ledger entries, fake calendar, Growth Stories, tool catalog, and mentor profiles deterministically, so every demo run is identical.
+- **Frontend:** `raghav/` — Vite + TanStack Start/Router + React + Tailwind + shadcn/ui; Motion for feed-morph; Clerk React SDK.
+- **Backend:** `services/api` — FastAPI, SQLAlchemy, Alembic; separate from the frontend.
+- **Database:** Postgres (Docker Compose / hosted). System of record for identities, evidence, interventions, ledger, integrations, cached search results.
+- **Auth:** Clerk (JWKS JWT verification, Google social, per-user provisioning).
+- **LLM — primary:** Google Gemini (`google.genai`), with key rotation pool and daily per-user call budget.
+- **LLM — fallback:** AWS Bedrock via the same provider adapter / failover wrapper.
+- **Retrieval:** Tavily Search API + YouTube Data API v3; composite provider supported; honesty badges required.
+- **Vector DB:** Qdrant Cloud (`VECTOR_DB_PROVIDER=qdrant`).
+- **Graph:** Neo4j Graph RAG (`RAG neo4j/` schema, queries, provider prototype → wire into Curator).
+- **Jobs:** Celery + Redis (worker + beat) for Tier-2 curation, sync, pre-warm, leverage scheduling.
+- **Integrations:** OAuth MCP adapters — Google Calendar, GitHub, Notion; Screen Time upload API; encrypted tokens at rest.
+- **Realtime:** local client event bus for Tier-0 interactions; async persistence + background refresh for Tier-2.
 
-Everything above is standard, well-documented, and AI-codegen-friendly. Nothing requires infra we haven't used, platform approvals, or multi-user coordination.
+Implementation constraint: all LLM calls go through one provider adapter; all search/vector/graph calls go through their adapters. No feature may import vendor SDKs directly outside those adapters.
 
 ---
 
-## 12. 24-Hour Build Plan
+## 12. Build Plan (current scope — no cut-list for former P2)
 
-| Hours | Deliverable |
+| Track | Deliverable |
 |---|---|
-| 0–2 | Repo scaffold, DB schema (versioned identity, events, interventions, ledger, resource catalogs), seed script with demo persona |
-| 2–5 | F1 onboarding interview + Declared Self extraction; F2 event pipeline |
-| 5–8 | F3 deterministic Gap math + arithmetic popover + lattice/dashboard with live updates |
-| 8–12 | F4 mock feed + deterministic Moment Detector + morph animation + simulator panel; F7 P0 dismissal/unlearning path |
-| 12–15 | F5 Curator: Potential Bottleneck diagnosis + Next Step lens with real retrieval + Missing Action lens |
-| 15–17 | F6 Guardian with live 0–100% Capacity Slider + locally prepared full/light/micro variants |
-| 17–19 | F7 full P1 Trust Ledger history; seed reusable story/tool/mentor catalogs |
-| 19–20 | F8 Weekly Report; F11 seeded identity-evolution proposal if core flow is stable |
-| 20–22 | Full demo rehearsal ×3, seed-data tuning so the score movement reads clearly on a projector |
-| 22–24 | Polish, P2 items only if everything above is stable, pitch deck |
+| A — Auth & ownership | Clerk JWT, provisioning, ownership audit, FE auth, per-user onboarding, CORS/env matrix |
+| B — LLM | Gemini live, key rotation, Bedrock failover, repair/harden paths, budget, prompt facade |
+| C — Retrieval & jobs | Tavily/YouTube live, Next Step ranking, Celery worker/beat, trigger-driven stack refresh, rate limits/telemetry |
+| D — Evidence connectors | Token infra, integrations router, Calendar, GitHub, Notion, honesty flags, FE connections UI |
+| Feed | Owned Growth Feed API + live resource cards + Catch morph |
+| Screen time | Upload/analyze → evidence pipeline |
+| Qdrant | Collections, semantic search API, partner match, dashboard Vector Search, reindex |
+| Neo4j | Schema, queries, Graph RAG context into Curator |
+| Community | Story submission, mentor matching, reputation basics |
+| Demo polish | Wire all primary FE routes off mock data; rehearsal of full agent loop on real user |
 
-**Cut rule:** if behind schedule at hour 15, drop F7's full-history P1 view, F8, F11, story/tool/mentor UI, and all P2. Preserve F7's P0 live dismissal/System Unlearning path and every other P0 capability.
+There is **no** hour-15 cut rule that drops F8/F9/F10/F11/community/graph/vector. If capacity is tight, prioritize wiring FE to live APIs over new surface area, but do not reclassify those features as future.
 
 ---
 
-## 13. Demo Script (4 beats, ~3 minutes)
+## 13. Demo Script (expanded beats)
 
-1. **The Mirror.** Judge states a real aspiration. Onboarding extracts the identity graph live; dashboard renders the lattice over the labeled simulated history. Gap score: 68. Open its popover for three seconds to expose the declared targets, fixed weights, recency decay, creation boosts, and drift penalties — proving the number is deterministic.
-2. **The Catch and Rejection.** Presenter doomscrolls five qualifying low-value cards. The local Moment Detector fires instantly and a media intervention morphs into the feed. The presenter dismisses it; because the seeded history contains two clearly labeled prior dismissals of that hypothesis family, this third rejection crosses the deterministic failure threshold. Within 250ms the Ledger shows **Hypothesis Failed** and **System Unlearning: Media −40%; switched to Micro-Action**. The prepared alternative morphs in, with **Why this / Why now / How it closes the Gap**. Presenter completes it → Gap score drops → a lattice strut fills in. Target duration for rejection and adaptation: 10 seconds.
-3. **The Protection.** Move the Capacity Slider from 80% to 20%. The Guardian swaps a 15-minute mission for a 60-second mental rehearsal immediately, without refresh or API latency: "Capacity changed; preserving momentum without adding load."
-4. **The Proof.** Open the Trust Ledger showing the complete chain: rejected hypothesis → explicit unlearning → alternative completed → new evidence → score changed. Closing line: "Every feed you've used optimizes one number — your attention. Trellis optimizes a different one, shows its math, and unlearns when it is wrong."
+1. **The Mirror.** Judge signs in (or uses a fresh account). Onboarding extracts the identity graph live; dashboard renders the lattice. Open Gap popover to prove deterministic math.
+2. **Real evidence.** Connect GitHub and/or Calendar, or drop a Screen Time screenshot — Gap / Revealed Self update from `simulated=false` events.
+3. **The Catch and Rejection.** Doomscroll five qualifying cards; Moment Detector fires; intervention morphs; third dismissal crosses System Unlearning; alternate completes → Gap moves.
+4. **The Protection.** Capacity Slider 80% → 20%; Guardian swaps full → micro locally with explanation.
+5. **Retrieval intelligence.** Show Live/Cached/Qdrant/Graph badges on stack or Vector Search results; Weekly Report + optional Identity Evolution confirm.
+6. **The Proof.** Trust Ledger chain: rejected hypothesis → unlearning → alternative completed → new evidence → score changed.
+
+Closing line: "Every feed you've used optimizes one number — your attention. Trellis optimizes a different one, shows its math, unlearns when it is wrong, and reads the life you already live."
 
 ---
 
@@ -470,30 +514,33 @@ Everything above is standard, well-documented, and AI-codegen-friendly. Nothing 
 
 | Risk | Mitigation |
 |---|---|
-| Gemini free-tier quota, latency, or stage failure | Minimize calls, use the fast model, cache deterministic outputs in Supabase, and pre-warm the flow. Keep AWS Bedrock behind the same provider adapter and test the fallback before judging begins |
-| Tavily quota or network failure | Use the free keyed plan, cache every successful result in Supabase, and fall back automatically to a small pre-fetched resource/event set |
-| Gap score looks arbitrary | Deterministic bounded formula, fixed event weights, seven-day decay, and a P0 arithmetic popover exposing every contribution; no LLM-generated score |
-| Judges probe "real vs theater" | Honesty map (Section 7) stated proactively; each agent has genuinely distinct tools; simulated data always labeled in-UI |
-| "Isn't this surveillance/manipulation?" | Guardian + consent framing is a *core demo beat*, not a defense; narrow permissions story; every intervention explained and dismissible |
-| Identity-evolution proposal feels presumptuous | Require repeated evidence, cite the signals behind the proposal, present it as a question, and never update the Declared Self without explicit confirmation |
-| P1 catalogs expand scope | Use small seeded story/tool/mentor datasets and one reusable resource-card component; no contribution, verification, messaging, or booking workflows |
-| Morph animation jank | Owned feed, pre-built card components, animation tested at hour 12, not hour 23 |
-| Stage network latency blocks the catch | Keep trigger, capacity adaptation, failure threshold, lens update, and UI state entirely local; use prepared intervention variants and the cache → Tavily → seeded fallback chain |
-| Scope creep | P0 list is frozen; cut rule at hour 15 is pre-agreed |
+| Gemini quota / latency | Fast model, key rotation, daily call cap, Bedrock failover, Tier-2 async, prepared interventions |
+| Tavily / YouTube / Qdrant / Neo4j failure | Cache → live → labeled curated fallback; never block Catch morph |
+| Gap score looks arbitrary | Deterministic formula + arithmetic popover; no LLM-generated score |
+| Judges probe "real vs theater" | Honesty map + source badges; connectors labeled; simulator demoted to dev |
+| Surveillance / manipulation concern | Guardian + consent; dismissible interventions; narrow OAuth scopes |
+| Identity-evolution feels presumptuous | Cite evidence; require Accept; Keep current equally prominent |
+| Scope pressure | FE wiring and connector honesty first; adapters keep vendors swappable |
+| Stage network latency | Tier-0 local for Catch/capacity/unlearning; pre-warm stacks |
 
 ---
 
 ## 15. Success Metrics
 
-**For the hackathon:** all P0 acceptance criteria pass in rehearsal ×3; demo ≤ 3 min; Gap score movement legible from the back of the room.
+**For the hackathon / live demo:** all P0 acceptance criteria pass in rehearsal; Gap movement legible; at least one live connector or screen-time ingest; at least one Live/Cached/Qdrant badge visible; Catch + Unlearning + Capacity beats land.
 
-**For the product (post-hackathon story):** weekly Gap delta per user, bottleneck-resolution rate, intervention acceptance rate, create:consume ratio improvement, ledger success-rate trend, Growth Story-to-action conversion, mentor-match acceptance, and confirmed identity evolution — none of which is watch time. This is the metric story for IABTM integration: Trellis becomes the curation layer whose KPI is user growth, plugged into IABTM's existing content and community surfaces via the same evidence-event schema (MCP integrations from the Forge plan are the roadmap, not the build).
+**For the product:** weekly Gap delta per user, bottleneck-resolution rate, intervention acceptance rate, create:consume ratio improvement, ledger success-rate trend, Growth Story-to-action conversion, mentor-match acceptance, confirmed identity evolution, connector attach rate — none of which is watch time. Trellis becomes the curation layer whose KPI is user growth, plugged into IABTM via the same evidence-event / MCP schema.
 
 ---
 
 ## 16. Locked Infrastructure Decisions
 
-1. **LLM:** Google Gemini API free tier is the primary provider. AWS Bedrock is the tested fallback if free-tier limits or reliability become a blocker.
-2. **Search:** Tavily Search API is the primary search provider because its agent-oriented response includes extracted content and source URLs with minimal integration work. Use the free keyed plan and cache results.
-3. **Database:** Supabase Postgres is the system of record for identities, evidence events, interventions, cached search results, and Trust Ledger entries.
-4. **Implementation constraint:** all LLM calls go through one provider adapter, and all search calls go through one retrieval adapter. No feature may import Gemini, Bedrock, or Tavily SDKs directly outside those adapters.
+1. **LLM:** Google Gemini is the primary provider. AWS Bedrock is the in-path failover when the Gemini pool is exhausted (feature-flagged until credentials exist).
+2. **Search:** Tavily is the primary web-search provider; YouTube Data API for video metadata; composite provider allowed.
+3. **Database:** Postgres is the system of record (not anonymous single-demo Supabase-only access).
+4. **Auth:** Clerk JWT + Google social; multi-user ownership mandatory.
+5. **Vector DB:** Qdrant Cloud for semantic search and partner match.
+6. **Graph:** Neo4j for Graph RAG context into curation.
+7. **Jobs:** Celery + Redis for Tier-2 and scheduled leverage/sync work.
+8. **Implementation constraint:** all LLM / search / vector / graph calls go through adapters only. No feature may import vendor SDKs outside those adapters.
+9. **Scope constraint:** former “future / deferred / P2-if-time” items in v1.2 are **current scope** in v2.0. Only Section 3 Non-Goals remain out.

@@ -17,7 +17,16 @@ const nav = [
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
-export function AppShell({ title, children }: { title: string; children: ReactNode }) {
+export function AppShell({
+  title,
+  children,
+  fitViewport = false,
+}: {
+  title: string;
+  children: ReactNode;
+  /** Lock the page to one viewport — no document scroll (used by Growth Feed). */
+  fitViewport?: boolean;
+}) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { unlearning, clearUnlearning, calendarPing } = useTrellis();
   const { user } = useUser();
@@ -115,8 +124,12 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
         </div>
       </aside>
 
-      <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain pb-20 md:pb-0">
-        <header className="sticky top-0 z-30 flex shrink-0 items-center justify-between gap-4 border-b border-border bg-background/80 px-5 sm:px-8 py-4 backdrop-blur-xl">
+      <div
+        className={`relative z-10 flex min-h-0 min-w-0 flex-1 flex-col overscroll-contain pb-20 md:pb-0 ${
+          fitViewport ? "overflow-hidden" : "overflow-y-auto"
+        }`}
+      >
+        <header className="sticky top-0 z-30 flex shrink-0 items-center justify-between gap-4 border-b border-border bg-background/80 px-5 sm:px-8 py-3 sm:py-4 backdrop-blur-xl">
           <div className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground tracking-[0.16em] uppercase">
             <span className="text-foreground font-medium">TRELLIS</span>
             <span className="opacity-60">/</span>
@@ -172,7 +185,15 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
           )}
         </AnimatePresence>
 
-        <main className="min-w-0 flex-1 px-5 sm:px-8 py-8 sm:py-10">{children}</main>
+        <main
+          className={`min-w-0 flex-1 ${
+            fitViewport
+              ? "flex min-h-0 flex-col overflow-hidden px-4 sm:px-6 py-3 sm:py-4"
+              : "px-5 sm:px-8 py-8 sm:py-10"
+          }`}
+        >
+          {children}
+        </main>
       </div>
 
       {/* Mobile bottom nav */}

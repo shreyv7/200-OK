@@ -23,7 +23,8 @@ def create_evidence(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ) -> EvidenceEvent:
-    check_rate_limit("evidence", user_id, limit=10, window_seconds=10)
+    # Companion telemetry can flush several events per browsing burst.
+    check_rate_limit("evidence", user_id, limit=60, window_seconds=60)
     # userId is never accepted from the client — always the authenticated caller (A3).
     request = EvidenceIngestRequest(userId=user_id, **body.model_dump())
     row, created = evidence_service.ingest(db, request)

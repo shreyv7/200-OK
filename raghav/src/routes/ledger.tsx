@@ -56,8 +56,8 @@ function Ledger() {
             Every hypothesis, kept in the open.
           </h1>
           <p className="text-sm leading-relaxed text-muted-foreground max-w-xl">
-            Nothing is quietly retried. Each intervention carries a verdict — and when
-            it fails, the adaptation that followed is written here as System Unlearning.
+            Nothing is quietly retried. Each intervention carries a verdict from the live
+            Trust Ledger — and when it fails, System Unlearning is written here.
           </p>
         </header>
 

@@ -18,7 +18,7 @@ ResourceType = Literal[
     "reflection",
 ]
 
-SourceBadge = Literal["Live web", "Cached web", "Curated fallback"]
+SourceBadge = Literal["Live web", "Cached web", "Curated fallback", "Graph RAG"]
 VariantIntensity = Literal["full", "light", "micro"]
 
 

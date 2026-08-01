@@ -2,17 +2,25 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.core.di import get_current_user_id, get_db
+from app.core.di import get_budgeted_llm_provider, get_current_user_id, get_db
+from app.providers.llm.base import LLMProvider
 from app.repositories import evolution_repository, twin_repository
 from app.repositories.twin_repository import WeightSumError
 from app.schemas.identity import DeclaredSelf
 from app.schemas.onboarding import IdentityPatchRequest
-from app.services.curation.trigger_refresh import enqueue_tier2_stack_refresh
+from app.services.identity import orchestration
 from app.services.identity.agent_runs import apply_proposed_changes
+from app.services.identity.wiring import _to_gap_snapshot
+from app.services.recommendation.evolution_hook import emit_evolution_accepted
+from app.services.recommendation.evolution_trigger import EvolutionAcceptedEvent
+from app.services.recommendation.onboarding_hook import emit_onboarding_confirmed
+from app.services.recommendation.onboarding_trigger import OnboardingConfirmEvent
 
 router = APIRouter(tags=["identity"])
 
@@ -41,6 +49,7 @@ def patch_identity(
     request: IdentityPatchRequest,
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
+    llm_provider: LLMProvider = Depends(get_budgeted_llm_provider),
 ) -> DeclaredSelf:
     """Edit the unconfirmed draft (from onboarding), optionally confirming it.
 
@@ -57,7 +66,19 @@ def patch_identity(
     except WeightSumError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
-    enqueue_tier2_stack_refresh(user_id)
+    recompute = orchestration.recompute_and_persist(
+        db, user_id, llm_provider=llm_provider
+    )
+    gap_snapshot = _to_gap_snapshot(user_id, recompute) if recompute is not None else None
+    emit_onboarding_confirmed(
+        OnboardingConfirmEvent(
+            userId=user_id,
+            twinVersion=confirmed.version,
+            confirmedAt=datetime.now(timezone.utc).isoformat(),
+            gapSnapshot=gap_snapshot,
+        ),
+        db=db,
+    )
     return confirmed
 
 
@@ -66,6 +87,7 @@ def accept_evolution(
     proposal_id: str,
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
+    llm_provider: LLMProvider = Depends(get_budgeted_llm_provider),
 ) -> DeclaredSelf:
     """Accept -> versioned Twin vN; Gap uses the new version from here on
     (milestones.md M7 merge gate 2). Applies the proposal's add/remove/
@@ -85,7 +107,20 @@ def accept_evolution(
 
     declared_self = twin_repository.create_confirmed_version(db, user_id, merged_attributes)
     evolution_repository.set_status(db, row, "accepted")
-    enqueue_tier2_stack_refresh(user_id)
+
+    recompute = orchestration.recompute_and_persist(
+        db, user_id, llm_provider=llm_provider
+    )
+    gap_snapshot = _to_gap_snapshot(user_id, recompute) if recompute is not None else None
+    emit_evolution_accepted(
+        EvolutionAcceptedEvent(
+            userId=user_id,
+            declaredSelfVersion=declared_self.version,
+            acceptedAt=datetime.now(timezone.utc).isoformat(),
+            gapSnapshot=gap_snapshot,
+        ),
+        db=db,
+    )
     return declared_self
 
 

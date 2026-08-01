@@ -7,15 +7,18 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.core.config import Settings, get_settings
 from app.core.di import (
     get_current_user_id,
     get_db,
     get_llm_provider,
     get_search_provider,
+    get_youtube_provider,
 )
 from app.providers.llm.base import LLMProvider
 from app.providers.search.base import SearchProvider
-from app.repositories import intervention_repository
+from app.providers.search.fake import FakeSearchProvider
+from app.repositories import intervention_repository, twin_repository
 from app.schemas.evidence import EvidenceIngestRequest
 from app.schemas.feed import FeedEventRequest, FeedItem, FeedPage, PreparedFeedIntervention
 from app.services.curation.feed import build_feed
@@ -26,12 +29,29 @@ from app.services.evidence import service as evidence_service
 router = APIRouter(tags=["feed"])
 
 
+def _stack_has_live_media(stack) -> bool:
+    return any(
+        element.type in {"media", "knowledge"}
+        and element.sourceBadge in {"Live web", "Cached web"}
+        for element in stack.elements
+    )
+
+
 def _active_or_create_stack(
-    db: Session, user_id: str, search_provider: SearchProvider, llm_provider: LLMProvider
+    db: Session,
+    user_id: str,
+    search_provider: SearchProvider,
+    llm_provider: LLMProvider,
+    *,
+    prefer_fresh_live: bool = False,
 ):
     active = intervention_repository.get_active(db, user_id)
     if active is not None:
-        return intervention_repository.to_stack(active)
+        stack = intervention_repository.to_stack(active)
+        # When live retrieval is configured, don't keep serving stacks built
+        # under FakeSearchProvider / curated-only fixtures.
+        if not prefer_fresh_live or _stack_has_live_media(stack):
+            return stack
     return stack_orchestration.refresh_stack(db, user_id, search_provider, llm_provider)
 
 
@@ -40,9 +60,33 @@ def get_feed(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
     search_provider: SearchProvider = Depends(get_search_provider),
+    youtube_provider: SearchProvider = Depends(get_youtube_provider),
     llm_provider: LLMProvider = Depends(get_llm_provider),
+    settings: Settings = Depends(get_settings),
 ) -> FeedPage:
-    return build_feed(_active_or_create_stack(db, user_id, search_provider, llm_provider))
+    live = settings.search_provider != "fake" and not isinstance(
+        search_provider, FakeSearchProvider
+    )
+    stack = _active_or_create_stack(
+        db,
+        user_id,
+        search_provider,
+        llm_provider,
+        prefer_fresh_live=live,
+    )
+    declared = twin_repository.get_active_declared_self(db, user_id)
+    attribute_labels = (
+        [attr.label for attr in declared.attributes if attr.label]
+        if declared is not None
+        else []
+    )
+    return build_feed(
+        stack,
+        search_provider=search_provider,
+        youtube_provider=youtube_provider,
+        user_id=user_id,
+        attribute_labels=attribute_labels,
+    )
 
 
 @router.get("/feed/prepared-intervention", response_model=PreparedFeedIntervention)

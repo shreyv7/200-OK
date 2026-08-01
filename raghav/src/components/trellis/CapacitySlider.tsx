@@ -1,10 +1,26 @@
+import { useEffect, useRef, useState } from "react";
 import { Slider } from "@/components/ui/slider";
 import { capacityLabel, capacityTier, useTrellis } from "@/lib/trellis/store";
 import { AnimatePresence, motion } from "motion/react";
 
 export function CapacitySlider({ variant = "bar" }: { variant?: "bar" | "expanded" }) {
   const { capacity, setCapacity } = useTrellis();
-  const tier = capacityTier(capacity);
+  const [local, setLocal] = useState(capacity);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setLocal(capacity);
+  }, [capacity]);
+
+  const pushCapacity = (value: number) => {
+    setLocal(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setCapacity(value);
+    }, 250);
+  };
+
+  const tier = capacityTier(local);
 
   const caption =
     tier === "micro"
@@ -20,8 +36,8 @@ export function CapacitySlider({ variant = "bar" }: { variant?: "bar" | "expande
           CAPACITY
         </span>
         <Slider
-          value={[capacity]}
-          onValueChange={(v) => setCapacity(v[0] ?? capacity)}
+          value={[local]}
+          onValueChange={(v) => pushCapacity(v[0] ?? local)}
           max={100}
           step={1}
           className="w-28 sm:w-36"
@@ -41,12 +57,12 @@ export function CapacitySlider({ variant = "bar" }: { variant?: "bar" | "expande
           <span className="h-1.5 w-1.5 rounded-full bg-signal" />
           DAILY CAPACITY BUDGET
         </span>
-        <span className="num text-2xl font-medium text-foreground">{capacity}%</span>
+        <span className="num text-2xl font-medium text-foreground">{local}%</span>
       </div>
 
       <Slider
-        value={[capacity]}
-        onValueChange={(v) => setCapacity(v[0] ?? capacity)}
+        value={[local]}
+        onValueChange={(v) => pushCapacity(v[0] ?? local)}
         max={100}
         step={1}
         className="mt-4"

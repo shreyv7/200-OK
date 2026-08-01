@@ -42,6 +42,7 @@ class CoordinatorState(TypedDict):
     opportunity_candidates: NotRequired[list[dict[str, Any]]]
     report_evolution_result: NotRequired[dict[str, Any] | None]
     declared_self_version: NotRequired[int]
+    db_session: NotRequired[Any]
 
 
 GRAPH_NODE_ORDER = [

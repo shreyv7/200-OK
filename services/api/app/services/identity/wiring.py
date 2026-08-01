@@ -16,6 +16,7 @@ from __future__ import annotations
 from app.core.db import SessionLocal
 from app.models.evidence_event import EvidenceEventModel
 from app.repositories import evidence_repository
+from app.services.curation.trigger_refresh import enqueue_tier2_stack_refresh
 from app.services.evidence import service as evidence_service
 from app.services.identity import orchestration
 from app.services.recommendation.evidence_hook import emit_evidence_created
@@ -42,7 +43,15 @@ def _on_evidence_created(row: EvidenceEventModel) -> None:
         result = orchestration.recompute_and_persist(db, row.user_id)
         event = evidence_repository.to_schema(row)
         gap_snapshot = _to_gap_snapshot(row.user_id, result) if result is not None else None
-        emit_evidence_created(event, gap_snapshot=gap_snapshot)
+        graph_result = emit_evidence_created(event, gap_snapshot=gap_snapshot)
+
+        stack_draft = graph_result.get("stack_draft") or {}
+        decision_packet = graph_result.get("decision_packet") or {}
+        should_refresh = bool(
+            stack_draft.get("invalidate") or decision_packet.get("invalidateStack")
+        )
+        if should_refresh:
+            enqueue_tier2_stack_refresh(row.user_id)
     finally:
         db.close()
 

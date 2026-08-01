@@ -5,7 +5,6 @@ import { Lattice } from "@/components/trellis/Lattice";
 import { GapBreakdownSheet } from "@/components/trellis/GapBreakdownSheet";
 import { StoryTrajectoryChart } from "@/components/trellis/StoryTrajectoryChart";
 import { useTrellis } from "@/lib/trellis/store";
-import { mock } from "@/lib/trellis/mockApi";
 import { AnimatePresence, motion } from "motion/react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
@@ -42,10 +41,20 @@ function DashboardPage() {
 
 function Dashboard() {
   const { user } = useUser();
-  const { gap, stack, declaredSelf, events, now, struts, pulsedStruts, capacity, tier } =
-    useTrellis();
+  const {
+    gap,
+    stack,
+    declaredSelf,
+    events,
+    now,
+    struts,
+    pulsedStruts,
+    capacity,
+    tier,
+    bottleneck,
+    liveReady,
+  } = useTrellis();
   const [sheetOpen, setSheetOpen] = useState(false);
-  const bottleneck = mock.currentBottleneck;
   const firstName = user?.firstName || user?.fullName || "you";
 
   const createPts = Math.round(gap.createRatio * 100);
@@ -198,8 +207,9 @@ function Dashboard() {
                 Sized to {tier} capacity ({capacity}%)
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Drag capacity — variants swap locally in under 100ms. Why this / Why now /
-                How it closes on every card.
+                Drag capacity — variants swap locally in under 100ms
+                {liveReady ? " from your live stack" : ""}. Why this / Why now / How it
+                closes on every card.
               </p>
             </div>
             <Link
@@ -250,7 +260,8 @@ function Dashboard() {
         </section>
 
         <p className="font-mono text-[10px] text-muted-foreground text-center">
-          TRELLIS · simulated history labeled · Shift+D opens simulator
+          TRELLIS · {liveReady ? "live dashboard + stack" : "loading live data…"} · Shift+D
+          opens simulator
         </p>
       </motion.div>
 

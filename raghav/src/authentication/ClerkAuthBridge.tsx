@@ -4,6 +4,16 @@ import { useEffect } from "react";
 import { API_BASE } from "@/lib/api/client";
 import { setAuthTokenGetter } from "./token";
 
+function bridgeTokenToCompanion(token: string) {
+  document.dispatchEvent(
+    new CustomEvent("trellis:set-auth-token", {
+      detail: { token },
+      bubbles: true,
+    }),
+  );
+  window.postMessage({ type: "TRELLIS_SET_AUTH_TOKEN", token }, "*");
+}
+
 /** Registers Clerk session tokens for API calls and syncs the local user row via /me. */
 export function ClerkAuthBridge() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
@@ -21,6 +31,7 @@ export function ClerkAuthBridge() {
     void (async () => {
       const token = await getToken();
       if (!token) return;
+      bridgeTokenToCompanion(token);
       try {
         await fetch(`${API_BASE}/me`, {
           headers: {

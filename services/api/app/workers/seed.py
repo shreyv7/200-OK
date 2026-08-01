@@ -269,11 +269,19 @@ def main() -> None:
         dismissals = _ensure_demo_dismissal_history(session, user.id)
         stories, tools, mentors = seed_catalog(session)
         try:
-            from app.api.search import reindex_vector_catalog
-            reindex_vector_catalog(db=session, _user_id=user.id)
-            logger.info("Qdrant vector catalog indexed successfully")
+            from app.services.recommendation.vector_index import index_catalog_to_qdrant
+
+            index_result = index_catalog_to_qdrant(session)
+            logger.info("Qdrant vector catalog index: %s", index_result.get("status"))
         except Exception as exc:
             logger.warning("Qdrant vector indexing skipped/failed: %s", exc)
+        try:
+            from app.services.graph.sync_service import sync_user_graph
+
+            graph_result = sync_user_graph(session, user.id)
+            logger.info("Neo4j graph sync: %s", graph_result)
+        except Exception as exc:
+            logger.warning("Neo4j graph sync skipped/failed: %s", exc)
         evolution_seeded = _ensure_demo_evolution_proposal(session, user.id)
 
         calendar_seeded = _ensure_demo_calendar_events(session, user.id)

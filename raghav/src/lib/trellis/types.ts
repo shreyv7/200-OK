@@ -76,6 +76,10 @@ export interface InterventionCard {
   action: string;
   reasoning: string;
   duration: string;
+  /** Backend hypothesis id for Trust Ledger recording. */
+  hypothesisId?: string;
+  /** Backend hypothesis family (media / micro_mission / …). */
+  hypothesisFamily?: string;
 }
 
 export type Verdict = "worked" | "failed" | "pending";

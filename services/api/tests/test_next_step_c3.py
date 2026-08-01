@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app.agents.nodes.knowledge.node import (
+from app.services.recommendation.knowledge_retrieval import (
     retrieve_knowledge_candidates,
     score_developmental_fit,
 )

@@ -1,5 +1,6 @@
-import { Calendar, Github } from "lucide-react";
+import { Calendar, Github, NotebookPen } from "lucide-react";
 import { IntegrationConnectionCard } from "./IntegrationConnectionCard";
+import { CompanionPanel } from "./CompanionPanel";
 import { useIntegrationsStatus } from "@/lib/integrations/useIntegrations";
 import { ScreenTimePanel } from "@/components/screentime";
 
@@ -19,6 +20,8 @@ export function IntegrationsPanel() {
           Synced events bypass simulation, update your Revealed Self, and dynamically drive your Identity Gap score.
         </p>
       </div>
+
+      <CompanionPanel />
 
       {/* Screen Time & Device Telemetry Drop Box */}
       <ScreenTimePanel />
@@ -45,6 +48,15 @@ export function IntegrationsPanel() {
           description="Syncs real commits and merged Pull Requests directly into your creation evidence feed (github_commit & published_artifact)."
           icon={<Github className="h-5 w-5 text-foreground" />}
           status={getStatus("github")}
+          isLoading={isLoading}
+        />
+
+        <IntegrationConnectionCard
+          provider="notion"
+          title="Notion"
+          description="Syncs recent Notion page edits into creation evidence so notes and drafts move your Revealed Self and Gap score."
+          icon={<NotebookPen className="h-5 w-5 text-foreground" />}
+          status={getStatus("notion")}
           isLoading={isLoading}
         />
       </div>

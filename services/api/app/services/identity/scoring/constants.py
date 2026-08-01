@@ -20,6 +20,21 @@ EVENT_WEIGHTS: dict[str, float] = {
     # Notion connector (PRD §9 — creation signals)
     "notion_page_created": 3.0,  # Creating a new page = high-value creation
     "notion_page_edited": 1.5,   # Editing an existing page = lighter creation signal
+    # Companion (Tampermonkey) aliases — userscript normally normalizes to
+    # passive_item / focus_drift_10min; these keep older payloads scorable.
+    "session_started": 1.0,
+    "feed_entered": 1.0,
+    "feed_exited": 1.0,
+    "feed_scroll": 1.0,
+    "spa_navigation": 1.0,
+    "tab_hidden": 1.0,
+    "tab_visible": 1.0,
+    "reel_view": 1.0,
+    "watch_view": 1.0,
+    "focus_drift_excessive_continuous_scrolling": -2.0,
+    "focus_drift_long_continuous_scrolling": -2.0,
+    "focus_drift_excessive_reel_consumption": -2.0,
+    "focus_drift_excessive_reel_dwell": -2.0,
 }
 
 # Category classification sets
@@ -34,10 +49,23 @@ CREATION_TYPES: set[str] = {
 
 PASSIVE_TYPES: set[str] = {
     "passive_item",
+    "session_started",
+    "feed_entered",
+    "feed_exited",
+    "feed_scroll",
+    "spa_navigation",
+    "tab_hidden",
+    "tab_visible",
+    "reel_view",
+    "watch_view",
 }
 
 DRIFT_TYPES: set[str] = {
     "focus_drift_10min",
+    "focus_drift_excessive_continuous_scrolling",
+    "focus_drift_long_continuous_scrolling",
+    "focus_drift_excessive_reel_consumption",
+    "focus_drift_excessive_reel_dwell",
 }
 
 # Capacity Tier thresholds (0-100 scale)

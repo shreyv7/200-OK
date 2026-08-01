@@ -125,10 +125,12 @@ function Onboarding() {
   const [draftDeclared, setDraftDeclared] = useState<OnboardingDeclaredView | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = chatScrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages, typing, phase]);
 
   const currentQ = QUESTIONS[qIndex]!;
@@ -222,9 +224,9 @@ function Onboarding() {
   const declared = draftDeclared ?? { headline: "", attributes: [] };
 
   return (
-    <div className="relative min-h-screen text-foreground overflow-x-hidden">
-      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-5 py-4">
+    <div className="relative flex h-dvh flex-col overflow-hidden text-foreground">
+      <header className="z-40 shrink-0 border-b border-border bg-background/80 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-3xl items-center justify-between px-5 py-3.5">
           <div className="flex items-center gap-2.5">
             <LatticeMark className="h-4 w-4" />
             <span className="font-mono text-[11px] font-semibold tracking-[0.24em] uppercase">
@@ -237,7 +239,7 @@ function Onboarding() {
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto max-w-3xl px-5 py-8 sm:py-12">
+      <main className="relative z-10 mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-5 py-4 sm:py-5">
         <AnimatePresence mode="wait">
           {phase === "chat" || phase === "extracting" ? (
             <motion.div
@@ -246,20 +248,20 @@ function Onboarding() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.4, ease }}
-              className="space-y-6"
+              className="flex min-h-0 flex-1 flex-col gap-4"
             >
-              <div>
+              <div className="shrink-0">
                 <p className="label-eyebrow text-signal">The Mirror</p>
-                <h1 className="mt-2 font-display text-3xl sm:text-4xl font-medium tracking-tight leading-[1.1]">
+                <h1 className="mt-1.5 font-display text-2xl sm:text-3xl font-medium tracking-tight leading-[1.1]">
                   Tell me who you&apos;re becoming.
                 </h1>
-                <p className="mt-3 text-sm text-muted-foreground max-w-lg">
+                <p className="mt-2 text-sm text-muted-foreground max-w-lg line-clamp-2">
                   Four to six questions. I&apos;ll extract a Declared Self with
                   observable markers you can confirm before anything is measured.
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 {QUESTIONS.map((q, i) => (
                   <div
                     key={q.id}
@@ -274,8 +276,11 @@ function Onboarding() {
                 ))}
               </div>
 
-              <div className="rounded-3xl border border-border bg-card/90 backdrop-blur-xl p-5 sm:p-7 min-h-[420px] flex flex-col">
-                <div className="flex-1 space-y-4 overflow-y-auto max-h-[48vh] pr-1">
+              <div className="flex min-h-0 flex-1 flex-col rounded-3xl border border-border bg-card/90 backdrop-blur-xl p-4 sm:p-6">
+                <div
+                  ref={chatScrollRef}
+                  className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-1"
+                >
                   {messages.map((m) => (
                     <motion.div
                       key={m.id}
@@ -317,17 +322,16 @@ function Onboarding() {
                       </p>
                     </motion.div>
                   )}
-                  <div ref={bottomRef} />
                 </div>
 
                 {phase === "chat" && !typing && (
-                  <div className="mt-6 space-y-2 border-t border-border pt-5">
-                    <p className="label-eyebrow mb-3">{currentQ.hint}</p>
+                  <div className="mt-4 shrink-0 space-y-2 border-t border-border pt-4">
+                    <p className="label-eyebrow mb-2">{currentQ.hint}</p>
                     {currentQ.options.map((opt) => (
                       <button
                         key={opt}
                         onClick={() => selectAnswer(opt)}
-                        className="group w-full text-left rounded-2xl border border-border bg-background px-4 py-3.5 text-sm text-foreground transition-all hover:border-signal/50 hover:bg-signal/5"
+                        className="group w-full text-left rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground transition-all hover:border-signal/50 hover:bg-signal/5"
                       >
                         <span className="flex items-center justify-between gap-3">
                           <span>{opt}</span>
@@ -345,59 +349,61 @@ function Onboarding() {
               initial={{ opacity: 0, y: 16, filter: "blur(4px)" }}
               animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
               transition={{ duration: 0.55, ease }}
-              className="space-y-6"
+              className="flex min-h-0 flex-1 flex-col gap-4"
             >
-              <div>
+              <div className="shrink-0">
                 <p className="label-eyebrow text-signal">Did I get you right?</p>
-                <h1 className="mt-2 font-display text-3xl sm:text-4xl font-medium tracking-tight leading-[1.1]">
+                <h1 className="mt-1.5 font-display text-2xl sm:text-3xl font-medium tracking-tight leading-[1.1]">
                   {declared.headline || "Your Declared Self"}
                 </h1>
-                <p className="mt-3 text-sm text-muted-foreground max-w-lg">
+                <p className="mt-2 text-sm text-muted-foreground max-w-lg">
                   Confirm this Declared Self. Trellis will measure your behaviour
                   against these markers — nothing changes without your consent.
                 </p>
               </div>
 
               {confirmError && (
-                <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 font-mono text-xs text-destructive">
+                <div className="shrink-0 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 font-mono text-xs text-destructive">
                   {confirmError}
                 </div>
               )}
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                {declared.attributes.map((attr) => (
-                  <div
-                    key={attr.id}
-                    className="rounded-3xl border border-border bg-card p-6 space-y-4"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="label-eyebrow">Identity attribute</p>
-                        <h3 className="mt-1 text-lg font-medium">{attr.label}</h3>
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {declared.attributes.map((attr) => (
+                    <div
+                      key={attr.id}
+                      className="rounded-3xl border border-border bg-card p-6 space-y-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="label-eyebrow">Identity attribute</p>
+                          <h3 className="mt-1 text-lg font-medium">{attr.label}</h3>
+                        </div>
+                        <span className="font-mono text-[10px] text-signal border border-signal/30 bg-signal/5 px-2 py-1 rounded-full">
+                          w = {attr.weight}
+                        </span>
                       </div>
-                      <span className="font-mono text-[10px] text-signal border border-signal/30 bg-signal/5 px-2 py-1 rounded-full">
-                        w = {attr.weight}
-                      </span>
+                      <div>
+                        <p className="label-eyebrow mb-2">Observable markers</p>
+                        <ul className="space-y-2">
+                          {attr.markers.map((m) => (
+                            <li
+                              key={m.id}
+                              className="flex items-center gap-2 text-sm text-muted-foreground"
+                            >
+                              <Check className="h-3.5 w-3.5 text-signal shrink-0" strokeWidth={2} />
+                              {m.label}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
-                    <div>
-                      <p className="label-eyebrow mb-2">Observable markers</p>
-                      <ul className="space-y-2">
-                        {attr.markers.map((m) => (
-                          <li
-                            key={m.id}
-                            className="flex items-center gap-2 text-sm text-muted-foreground"
-                          >
-                            <Check className="h-3.5 w-3.5 text-signal shrink-0" strokeWidth={2} />
-                            {m.label}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
 
-              <div className="flex flex-wrap gap-3 pt-2">
+              <div className="flex shrink-0 flex-wrap gap-3 pt-1">
                 <button
                   onClick={() => void confirmAndEnter()}
                   disabled={confirming || !draftApi}

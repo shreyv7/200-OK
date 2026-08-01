@@ -22,7 +22,7 @@ from app.services.identity.weekly_report import generate_weekly_report as _gener
 
 
 def generate_weekly_report(db, llm_provider: LLMProvider, user_id: str) -> WeeklyReport | None:
-    result = orchestration.recompute_and_persist(db, user_id)
+    result = orchestration.recompute_and_persist(db, user_id, llm_provider=llm_provider)
     if result is None:
         return None
 
@@ -39,7 +39,7 @@ def generate_weekly_report(db, llm_provider: LLMProvider, user_id: str) -> Weekl
 def generate_evolution_proposal(
     db, llm_provider: LLMProvider, user_id: str
 ) -> IdentityEvolutionProposal | None:
-    result = orchestration.recompute_and_persist(db, user_id)
+    result = orchestration.recompute_and_persist(db, user_id, llm_provider=llm_provider)
     if result is None:
         return None
 

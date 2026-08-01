@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from app.schemas import IdentityStack, StackElement, StackExplanation
-from app.services.recommendation.fallback_catalog import get_fallback_mission
+from app.services.recommendation.planner_missions import build_planner_candidates
 from app.services.recommendation.variants import generate_variants, select_variant_by_intensity
 
 
@@ -21,7 +21,7 @@ def request_alternate_stack(
     hyp_id = hypothesis_id or (prior_stack.hypothesisId if prior_stack else f"hyp-alt-{user_id}")
     now = datetime.now(timezone.utc)
 
-    mission = get_fallback_mission(bottleneck, small_experiment=True)
+    mission = build_planner_candidates(bottleneck, small_experiment=True)[0]
     element = StackElement(
         id=mission["id"],
         type="micro_mission",

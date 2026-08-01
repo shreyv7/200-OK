@@ -10,11 +10,13 @@ the arithmetic; Backend owns calling it and persisting/serving results
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.kpi_snapshot import KPISnapshotModel
+from app.models.user import User
 from app.repositories import evidence_repository, twin_repository
 from app.schemas.bottleneck import BottleneckPacket
 from app.schemas.gap import AttributeContribution, GapBreakdown
@@ -65,8 +67,17 @@ def _top_bottleneck_packet(candidates) -> BottleneckPacket | None:
     )
 
 
-def recompute_and_persist(db: Session, user_id: str) -> RecomputeResult | None:
+def recompute_and_persist(
+    db: Session,
+    user_id: str,
+    *,
+    llm_provider: Any | None = None,
+) -> RecomputeResult | None:
     """Recompute Gap/KPI/bottleneck for user_id and persist a KPI snapshot row.
+
+    When ``llm_provider`` is set, bottleneck diagnosis uses Gemini (v1);
+    otherwise the deterministic v0 path stays in place for Tier-0 callers
+    (dashboard polling, evidence-ingest hooks).
 
     Returns None if there is no confirmed DeclaredSelf yet — normal before
     the Mirror Interview (M3) or the seed fixture twin has run.
@@ -81,6 +92,8 @@ def recompute_and_persist(db: Session, user_id: str) -> RecomputeResult | None:
 
     prior = _latest_snapshot(db, user_id)
     prior_gap_score = prior.gap_score if prior is not None else None
+    user = db.get(User, user_id)
+    capacity_pct = int(user.capacity) if user is not None else 100
 
     gap_result, kpi, decision_packet = recompute_user_gap(
         user_id=user_id,
@@ -88,6 +101,8 @@ def recompute_and_persist(db: Session, user_id: str) -> RecomputeResult | None:
         events=events,
         prior_gap_score=prior_gap_score,
         window_days=WINDOW_DAYS,
+        llm_provider=llm_provider,
+        capacity_pct=capacity_pct,
     )
 
     gap_breakdown = GapBreakdown(

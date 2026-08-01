@@ -1,14 +1,18 @@
-"""Best-effort warm cache after onboarding confirm — AIS M3/M4."""
+"""Best-effort warm cache after onboarding/evolution confirm — AIS M3/M4."""
 
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
 
-from app.schemas import DecisionPacket
+from sqlalchemy.orm import Session
+
+from app.core.config import get_settings
+from app.core.di import get_llm_provider, get_search_provider
 from app.providers.llm.base import LLMProvider
 from app.providers.search.base import SearchProvider
-from app.services.recommendation.curation_cycle import run_curation_cycle
+from app.schemas import DecisionPacket
+from app.services.curation import stack_orchestration
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +25,7 @@ class WarmCacheResult:
 
 
 def warm_cache_after_onboarding(
+    db: Session,
     user_id: str,
     decision_packet: DecisionPacket,
     *,
@@ -28,15 +33,19 @@ def warm_cache_after_onboarding(
     llm: LLMProvider | None = None,
     search: SearchProvider | None = None,
 ) -> WarmCacheResult:
-    """Attempt full curation cycle prep; never raises."""
+    """Attempt full curation via Coordinator facade; never raises."""
+    settings = get_settings()
+    effective_llm = llm or get_llm_provider(settings)
+    effective_search = search or get_search_provider(settings)
     try:
-        stack = run_curation_cycle(
+        stack = stack_orchestration.run_curation_and_persist(
+            db,
+            user_id,
             decision_packet,
+            effective_search,
+            effective_llm,
             trigger="onboarding.confirmed",
             run_id=run_id or f"warm-{user_id}",
-            llm=llm,
-            search=search,
-            persist_active_stack=True,
         )
         return WarmCacheResult(ok=True, stackId=stack.id)
     except Exception as exc:  # noqa: BLE001 — warm-cache must not block onboarding
@@ -45,6 +54,7 @@ def warm_cache_after_onboarding(
 
 
 def warm_cache_after_evolution(
+    db: Session,
     user_id: str,
     decision_packet: DecisionPacket,
     *,
@@ -53,17 +63,20 @@ def warm_cache_after_evolution(
     search: SearchProvider | None = None,
 ) -> WarmCacheResult:
     """Best-effort refresh after evolution accept; never raises."""
+    settings = get_settings()
+    effective_llm = llm or get_llm_provider(settings)
+    effective_search = search or get_search_provider(settings)
     try:
-        stack = run_curation_cycle(
+        stack = stack_orchestration.run_curation_and_persist(
+            db,
+            user_id,
             decision_packet,
+            effective_search,
+            effective_llm,
             trigger="evolution.accepted",
             run_id=run_id or f"warm-evolve-{user_id}",
-            llm=llm,
-            search=search,
-            persist_active_stack=True,
         )
-        stack_id = stack.id if hasattr(stack, "id") else stack.stack.id
-        return WarmCacheResult(ok=True, stackId=stack_id)
+        return WarmCacheResult(ok=True, stackId=stack.id)
     except Exception as exc:  # noqa: BLE001 — warm-cache must not block accept path
         logger.warning("warm_cache_after_evolution failed for %s: %s", user_id, exc)
         return WarmCacheResult(ok=False, reason=str(exc))

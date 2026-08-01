@@ -2,10 +2,27 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
+import {
+  getActiveStack,
+  getDashboardSummary,
+  getStackVariants,
+  listLedger,
+  listLedgerAdaptations,
+  patchCapacity,
+  recordLedgerAction,
+} from "@/lib/api/endpoints";
+import {
+  mapDashboardSummary,
+  mapLedgerEntry,
+  mapStackFromActive,
+  mapStackFromVariants,
+  mapUnlearningFromLedger,
+} from "@/lib/api/mappers";
 import type {
   DeclaredSelf,
   EvidenceEvent,
@@ -15,6 +32,13 @@ import type {
   StackElement,
   Unlearning,
 } from "./types";
+
+export interface BottleneckView {
+  name: string;
+  diagnosis: string;
+  confidence: "high" | "medium" | "low";
+  evidence: string[];
+}
 
 export interface TrellisContextType {
   gap: Gap;
@@ -27,6 +51,7 @@ export interface TrellisContextType {
   capacity: number;
   setCapacity: (c: number) => void;
   tier: string;
+  bottleneck: BottleneckView;
   unlearning: Unlearning | null;
   clearUnlearning: () => void;
   calendarPing: string | null;
@@ -45,10 +70,14 @@ export interface TrellisContextType {
   unlearned: boolean;
   nextIntervention: InterventionCard;
   logDrift: (label: string) => void;
-  acceptIntervention: (card: InterventionCard) => void;
-  snoozeIntervention: (card: InterventionCard) => void;
+  acceptIntervention: (card: InterventionCard) => Promise<void>;
+  snoozeIntervention: (card: InterventionCard) => Promise<void>;
   /** Returns true when this dismissal crossed the unlearning threshold. */
-  dismissIntervention: (card: InterventionCard) => boolean;
+  dismissIntervention: (card: InterventionCard) => Promise<boolean>;
+  refreshLiveData: () => Promise<void>;
+  liveReady: boolean;
+  addEvidenceEvent: (event: Omit<EvidenceEvent, "id">) => void;
+  triggerPulse: () => void;
 }
 
 const MEDIA_INTERVENTION: InterventionCard = {
@@ -235,6 +264,12 @@ const defaultContext: TrellisContextType = {
   capacity: 75,
   setCapacity: () => {},
   tier: "FULL",
+  bottleneck: {
+    name: "Focus Drift",
+    diagnosis: "High passive consumption relative to output over the last 7 days.",
+    confidence: "medium",
+    evidence: [],
+  },
   unlearning: null,
   clearUnlearning: () => {},
   calendarPing: null,
@@ -252,37 +287,91 @@ const defaultContext: TrellisContextType = {
   unlearned: false,
   nextIntervention: MEDIA_INTERVENTION,
   logDrift: () => {},
-  acceptIntervention: () => {},
-  snoozeIntervention: () => {},
-  dismissIntervention: () => false,
+  acceptIntervention: async () => {},
+  snoozeIntervention: async () => {},
+  dismissIntervention: async () => false,
+  refreshLiveData: async () => {},
+  liveReady: false,
+  addEvidenceEvent: () => {},
+  triggerPulse: () => {},
 };
+
+function familyFromCard(card: InterventionCard): string {
+  return card.hypothesisFamily ?? (card.lens === "Media" ? "media" : "micro_mission");
+}
+
+function hypothesisFromCard(card: InterventionCard): string {
+  return card.hypothesisId ?? card.id;
+}
 
 const TrellisContext = createContext<TrellisContextType>(defaultContext);
 
-const DISMISSALS_BEFORE_UNLEARNING = 3;
-
 export function TrellisProvider({ children }: { children: ReactNode }) {
-  const [capacity, setCapacity] = useState(75);
+  const [capacity, setCapacityState] = useState(75);
   const [unlearning, setUnlearning] = useState<Unlearning | null>(null);
   const [unlearned, setUnlearned] = useState(false);
   const [dismissalCount, setDismissalCount] = useState(0);
   const [events, setEvents] = useState<EvidenceEvent[]>(defaultContext.events);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
-  const [gapDelta, setGapDelta] = useState(0);
+  const [gap, setGap] = useState<Gap>(defaultContext.gap);
+  const [stack, setStack] = useState<StackElement[]>(defaultContext.stack);
+  const [declaredSelf, setDeclaredSelf] = useState<DeclaredSelf>(defaultContext.declaredSelf);
+  const [bottleneck, setBottleneck] = useState<BottleneckView>(defaultContext.bottleneck);
+  const [liveReady, setLiveReady] = useState(false);
+  const [identityUpdated, setIdentityUpdated] = useState(false);
+  const [pulsedStruts, setPulsedStruts] = useState<string[]>(defaultContext.pulsedStruts);
 
   const nextIntervention = useMemo(
     () => (unlearned ? MICRO_ACTION_INTERVENTION : MEDIA_INTERVENTION),
     [unlearned],
   );
 
-  const gap: Gap = useMemo(
-    () => ({
-      ...defaultContext.gap,
-      score: Math.max(0, defaultContext.gap.score - gapDelta),
-      alignment: Math.min(100, defaultContext.gap.alignment + gapDelta),
-    }),
-    [gapDelta],
-  );
+  const refreshLiveData = useCallback(async () => {
+    try {
+      const [summary, variants, active, entries, adaptations] = await Promise.all([
+        getDashboardSummary().catch(() => null),
+        getStackVariants().catch(() => null),
+        getActiveStack().catch(() => null),
+        listLedger().catch(() => []),
+        listLedgerAdaptations().catch(() => []),
+      ]);
+
+      if (summary) {
+        const mapped = mapDashboardSummary(summary);
+        setGap(mapped.gap);
+        setDeclaredSelf(mapped.declaredSelf);
+        setCapacityState(mapped.capacity);
+        setBottleneck(mapped.bottleneck);
+      }
+
+      if (variants && Object.keys(variants).length > 0) {
+        setStack(mapStackFromVariants(variants, active));
+      } else if (active) {
+        setStack(mapStackFromActive(active));
+      }
+
+      setLedger(entries.map(mapLedgerEntry));
+      const unlearn = mapUnlearningFromLedger(adaptations.length ? adaptations : entries);
+      if (unlearn) {
+        setUnlearned(true);
+        setUnlearning(unlearn);
+      }
+      setLiveReady(true);
+    } catch {
+      setLiveReady(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshLiveData();
+  }, [refreshLiveData]);
+
+  const setCapacity = useCallback((value: number) => {
+    setCapacityState(value);
+    void patchCapacity(value).catch(() => {
+      /* keep optimistic local capacity if network fails */
+    });
+  }, []);
 
   const appendEvent = useCallback((event: Omit<EvidenceEvent, "id">) => {
     setEvents((prev) => [
@@ -291,19 +380,35 @@ export function TrellisProvider({ children }: { children: ReactNode }) {
     ]);
   }, []);
 
-  const appendLedger = useCallback(
-    (entry: Omit<LedgerEntry, "id" | "deliveredAt">) => {
-      setLedger((prev) => [
-        {
-          id: `lg_${Date.now()}_${prev.length}`,
-          deliveredAt: new Date().toISOString(),
-          ...entry,
-        },
-        ...prev,
-      ]);
-    },
-    [],
-  );
+  const addEvidenceEvent = appendEvent;
+
+  const triggerPulse = useCallback(() => {
+    setPulsedStruts((prev) => (prev.length ? prev : ["m2", "m3"]));
+  }, []);
+
+  const injectDoomscroll = useCallback(() => {
+    appendEvent({
+      label: "Doomscroll session",
+      kind: "drift",
+      strength: 0.3,
+      occurredAt: new Date().toISOString(),
+      simulated: true,
+    });
+  }, [appendEvent]);
+
+  const advanceDay = useCallback(() => {
+    appendEvent({
+      label: "Day advanced (simulator)",
+      kind: "completion",
+      strength: 0.2,
+      occurredAt: new Date().toISOString(),
+      simulated: true,
+    });
+  }, [appendEvent]);
+
+  const prependLedger = useCallback((entry: LedgerEntry) => {
+    setLedger((prev) => [entry, ...prev.filter((row) => row.id !== entry.id)]);
+  }, []);
 
   const logDrift = useCallback(
     (label: string) => {
@@ -319,43 +424,65 @@ export function TrellisProvider({ children }: { children: ReactNode }) {
   );
 
   const acceptIntervention = useCallback(
-    (card: InterventionCard) => {
+    async (card: InterventionCard) => {
       appendEvent({
         label: card.action,
         kind: card.lens === "Media" ? "passive_learning" : "creation",
         strength: card.lens === "Media" ? 0.4 : 0.8,
         occurredAt: new Date().toISOString(),
       });
-      appendLedger({
-        verdict: "worked",
-        hypothesis: `A ${card.lens} prompt at the drift moment converts into a rep`,
-        family: card.lens,
-        delivered: card.action,
-        outcomeWindow: card.duration,
-        evidence: "Accepted in-feed and logged as a completed rep.",
-      });
-      setGapDelta((d) => Math.min(defaultContext.gap.score, d + 4));
+      try {
+        const entry = await recordLedgerAction({
+          hypothesisId: hypothesisFromCard(card),
+          hypothesisFamily: familyFromCard(card),
+          action: "accepted",
+        });
+        prependLedger(mapLedgerEntry(entry));
+      } catch {
+        prependLedger({
+          id: `lg_local_${Date.now()}`,
+          deliveredAt: new Date().toISOString(),
+          verdict: "worked",
+          hypothesis: `A ${card.lens} prompt at the drift moment converts into a rep`,
+          family: card.lens,
+          delivered: card.action,
+          outcomeWindow: card.duration,
+          evidence: "Accepted in-feed (local fallback).",
+        });
+      }
       setDismissalCount(0);
+      void refreshLiveData();
     },
-    [appendEvent, appendLedger],
+    [appendEvent, prependLedger, refreshLiveData],
   );
 
   const snoozeIntervention = useCallback(
-    (card: InterventionCard) => {
-      appendLedger({
-        verdict: "pending",
-        hypothesis: `A ${card.lens} prompt at the drift moment converts into a rep`,
-        family: card.lens,
-        delivered: card.action,
-        outcomeWindow: "Retry in the next capacity window",
-        evidence: "Snoozed — no outcome recorded yet.",
-      });
+    async (card: InterventionCard) => {
+      try {
+        const entry = await recordLedgerAction({
+          hypothesisId: hypothesisFromCard(card),
+          hypothesisFamily: familyFromCard(card),
+          action: "snoozed",
+        });
+        prependLedger(mapLedgerEntry(entry));
+      } catch {
+        prependLedger({
+          id: `lg_local_${Date.now()}`,
+          deliveredAt: new Date().toISOString(),
+          verdict: "pending",
+          hypothesis: `A ${card.lens} prompt at the drift moment converts into a rep`,
+          family: card.lens,
+          delivered: card.action,
+          outcomeWindow: "Retry in the next capacity window",
+          evidence: "Snoozed — local fallback.",
+        });
+      }
     },
-    [appendLedger],
+    [prependLedger],
   );
 
   const dismissIntervention = useCallback(
-    (card: InterventionCard) => {
+    async (card: InterventionCard) => {
       const count = dismissalCount + 1;
       setDismissalCount(count);
       appendEvent({
@@ -365,30 +492,43 @@ export function TrellisProvider({ children }: { children: ReactNode }) {
         occurredAt: new Date().toISOString(),
       });
 
-      const crossed = count >= DISMISSALS_BEFORE_UNLEARNING && !unlearned;
-      const adaptation = `${card.lens} weight reduced 40%. Switched to the Micro-Action lens for the next intervention.`;
-
-      appendLedger({
-        verdict: "failed",
-        hypothesis: `A ${card.lens} prompt at the drift moment converts into a rep`,
-        family: card.lens,
-        delivered: card.action,
-        outcomeWindow: card.duration,
-        evidence: `Dismissed in-feed (${count} of ${DISMISSALS_BEFORE_UNLEARNING} before the lens is retired).`,
-        ...(crossed ? { adaptation } : {}),
-      });
-
-      if (crossed) {
-        setUnlearned(true);
-        setUnlearning({
-          hypothesis: `${card.lens} prompts will close the speaking gap`,
-          adaptation,
+      try {
+        const entry = await recordLedgerAction({
+          hypothesisId: hypothesisFromCard(card),
+          hypothesisFamily: familyFromCard(card),
+          action: "dismissed",
         });
+        prependLedger(mapLedgerEntry(entry));
+        if (entry.unlearningTriggered) {
+          setUnlearned(true);
+          setUnlearning({
+            hypothesis: `${card.lens} prompts will close the gap`,
+            adaptation:
+              entry.note ??
+              `${card.lens} weight reduced 40%. Switched to the Micro-Action lens.`,
+          });
+          void refreshLiveData();
+          return true;
+        }
+        return false;
+      } catch {
+        const crossed = count >= 3 && !unlearned;
+        if (crossed) {
+          setUnlearned(true);
+          setUnlearning({
+            hypothesis: `${card.lens} prompts will close the speaking gap`,
+            adaptation: `${card.lens} weight reduced 40%. Switched to Micro-Action.`,
+          });
+        }
+        return crossed;
       }
-      return crossed;
     },
-    [appendEvent, appendLedger, dismissalCount, unlearned],
+    [appendEvent, dismissalCount, prependLedger, refreshLiveData, unlearned],
   );
+
+  const forceThirdDismissal = useCallback(() => {
+    void dismissIntervention(nextIntervention);
+  }, [dismissIntervention, nextIntervention]);
 
   const value: TrellisContextType = {
     ...defaultContext,
@@ -396,7 +536,11 @@ export function TrellisProvider({ children }: { children: ReactNode }) {
     setCapacity,
     tier: capacityTier(capacity).toUpperCase(),
     gap,
+    stack,
+    declaredSelf,
+    bottleneck,
     events,
+    pulsedStruts,
     ledger,
     dismissalCount,
     unlearning,
@@ -407,6 +551,15 @@ export function TrellisProvider({ children }: { children: ReactNode }) {
     acceptIntervention,
     snoozeIntervention,
     dismissIntervention,
+    forceThirdDismissal,
+    injectDoomscroll,
+    advanceDay,
+    identityUpdated,
+    acceptIdentityEvolution: () => setIdentityUpdated(true),
+    refreshLiveData,
+    liveReady,
+    addEvidenceEvent,
+    triggerPulse,
   };
 
   return <TrellisContext.Provider value={value}>{children}</TrellisContext.Provider>;

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.schemas.bottleneck import BottleneckLabel
+from app.services.recommendation.planner_missions import MISSION_TEMPLATES
 
 CatalogEntry = dict[str, Any]
 
@@ -33,42 +34,37 @@ _KNOWLEDGE: dict[BottleneckLabel, CatalogEntry] = {
 }
 
 _MISSIONS: dict[BottleneckLabel, CatalogEntry] = {
-    "execution": {
-        "id": "fallback-mission-execution",
+    label: {
+        "id": f"fallback-mission-{label}",
         "type": "micro_mission",
-        "title": "Ship a 60-second speaking clip",
+        "title": title,
         "sourceBadge": "Curated fallback",
-    },
-    "confidence": {
-        "id": "fallback-mission-confidence",
-        "type": "micro_mission",
-        "title": "Record a 30-second voice note without editing",
-        "sourceBadge": "Curated fallback",
-    },
-    "consistency": {
-        "id": "fallback-mission-consistency",
-        "type": "micro_mission",
-        "title": "Block 10 minutes tomorrow for one rep",
-        "sourceBadge": "Curated fallback",
-    },
+    }
+    for label, title in MISSION_TEMPLATES.items()
 }
 
 _DEFAULT_LABEL: BottleneckLabel = "execution"
 
 
-def _normalize_label(bottleneck: str) -> BottleneckLabel:
+def _normalize_knowledge_label(bottleneck: str) -> BottleneckLabel:
     if bottleneck in _KNOWLEDGE:
         return bottleneck  # type: ignore[return-value]
     return _DEFAULT_LABEL
 
 
+def _normalize_mission_label(bottleneck: str) -> BottleneckLabel:
+    if bottleneck in _MISSIONS:
+        return bottleneck  # type: ignore[return-value]
+    return _DEFAULT_LABEL
+
+
 def get_fallback_knowledge(bottleneck: str) -> CatalogEntry:
-    label = _normalize_label(bottleneck)
+    label = _normalize_knowledge_label(bottleneck)
     return dict(_KNOWLEDGE[label])
 
 
 def get_fallback_mission(bottleneck: str, *, small_experiment: bool = False) -> CatalogEntry:
-    label = _normalize_label(bottleneck)
+    label = _normalize_mission_label(bottleneck)
     mission = dict(_MISSIONS[label])
     if small_experiment:
         mission["title"] = f"Small experiment: {mission['title'].lower()}"

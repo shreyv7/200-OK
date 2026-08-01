@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from sqlalchemy.orm import Session
+
 from app.agents.graphs.coordinator import build_coordinator_graph
 from app.providers.llm.base import LLMProvider
 from app.providers.search.base import SearchProvider
@@ -38,6 +40,7 @@ def _build_initial_state(
     catalog_source: CatalogSource | None = None,
     include_p1_lenses: bool = False,
     stage: str | None = None,
+    db_session: Session | None = None,
 ) -> dict[str, Any]:
     state: dict[str, Any] = {
         "trigger": trigger,
@@ -65,6 +68,8 @@ def _build_initial_state(
     if include_p1_lenses:
         state["include_p1_lenses"] = True
         state["stage"] = stage or resolve_stage(decision_packet)
+    if db_session is not None:
+        state["db_session"] = db_session
     return state
 
 
@@ -82,6 +87,7 @@ def run_curation_cycle(
     catalog_source: CatalogSource | None = None,
     include_p1_lenses: bool = False,
     stage: str | None = None,
+    db: Session | None = None,
 ) -> IdentityStack | CurationCycleResult:
     """Decision → diagnose → retrieve → assemble → guardian; never empty stack."""
     effective_run_id = run_id or f"curation-{decision_packet.userId}"
@@ -99,6 +105,7 @@ def run_curation_cycle(
         catalog_source=catalog_source,
         include_p1_lenses=include_p1_lenses,
         stage=stage,
+        db_session=db,
     )
 
     graph = build_coordinator_graph()

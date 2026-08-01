@@ -57,3 +57,42 @@ class GraphRAGService:
             "text_candidates": text_candidates,
             "formatted_graph_context": formatted_context,
         }
+
+
+def graph_candidates_as_knowledge(
+    user_id: str,
+    bottleneck: str,
+    *,
+    provider: Any | None = None,
+    limit: int = 2,
+) -> list[dict[str, Any]]:
+    """Format graph RAG hits as Knowledge lens candidate dicts."""
+    from app.providers.graph.fake import FakeGraphProvider
+
+    graph_provider = provider or FakeGraphProvider()
+    repo = GraphRepository(graph_provider)
+    service = GraphRAGService(repo)
+    context = service.retrieve_graph_context(user_id, bottleneck)
+    candidates: list[dict[str, Any]] = []
+    for index, hit in enumerate(context["graph_candidates"][:limit]):
+        candidates.append(
+            {
+                "id": f"cand-graph-{index}",
+                "type": "knowledge",
+                "title": hit.get("title") or "Graph growth resource",
+                "url": hit.get("url"),
+                "sourceBadge": "Graph RAG",
+                "extract": hit.get("extract") or "",
+                "metadata": {"bottleneck": bottleneck},
+            }
+        )
+    return candidates
+
+
+def get_graph_rag_service(provider: Any | None = None) -> GraphRAGService:
+    """Factory for Graph RAG service with configured provider."""
+    from app.providers.graph.fake import FakeGraphProvider
+    from app.repositories.graph_repository import GraphRepository
+
+    graph_provider = provider or FakeGraphProvider()
+    return GraphRAGService(GraphRepository(graph_provider))

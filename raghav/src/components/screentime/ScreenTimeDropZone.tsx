@@ -102,18 +102,16 @@ export function ScreenTimeDropZone() {
         const weight = category === "creation" ? 4.0 : category === "passive_learning" ? 1.5 : -2.0;
 
         addEvidenceEvent({
-          timestamp: new Date().toISOString(),
+          label: `${name} · ${evType}`,
+          kind:
+            category === "creation"
+              ? "creation"
+              : category === "passive_learning"
+                ? "passive_learning"
+                : "drift",
+          strength: Math.min(1, Math.abs(weight) / 4),
+          occurredAt: new Date().toISOString(),
           source: "trellis",
-          type: evType,
-          category: category,
-          identityAttributeIds: ["public_speaker", "builder"],
-          value: duration,
-          baseWeight: weight,
-          metadata: {
-            source: "screentime_drop_box",
-            appName: name,
-            durationMinutes: duration,
-          },
           simulated: false,
         });
       });

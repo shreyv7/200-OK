@@ -35,12 +35,146 @@ export interface ApiMeUser {
   capacity?: number;
 }
 
-export type ApiSourceBadge = "Live web" | "Cached web" | "Curated fallback";
+export type ApiSourceBadge = "Live web" | "Cached web" | "Curated fallback" | "Graph RAG";
 
 export interface ApiStackExplanation {
   whyThis: string;
   whyNow: string;
   howReducesGap: string;
+}
+
+export interface ApiStackElement {
+  id: string;
+  type: string;
+  title: string;
+  url?: string | null;
+  sourceBadge: ApiSourceBadge;
+  explanation: ApiStackExplanation;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ApiIdentityStack {
+  id: string;
+  userId: string;
+  hypothesisId: string;
+  bottleneck: string;
+  elements: ApiStackElement[];
+  curatedAt: string;
+  validUntil?: string | null;
+}
+
+export interface ApiInterventionVariant {
+  hypothesisId: string;
+  intensity: "full" | "light" | "micro";
+  stack: ApiIdentityStack;
+  generatedAt: string;
+}
+
+export type ApiStackVariants = Partial<
+  Record<"full" | "light" | "micro", ApiInterventionVariant>
+>;
+
+export interface ApiAttributeContribution {
+  attributeId: string;
+  w_i: number;
+  D_i: number;
+  R_i: number;
+  deficit_i: number;
+}
+
+export interface ApiGapBreakdown {
+  userId: string;
+  gapScore: number;
+  alignmentScore: number;
+  createPoints: number;
+  consumePoints: number;
+  driftPoints: number;
+  createConsumeRatio: number;
+  consistency: number;
+  momentum: number;
+  attributes: ApiAttributeContribution[];
+}
+
+export interface ApiBottleneckPacket {
+  bottleneck: string;
+  confidence: number;
+  supporting_evidence: string[];
+  missing_evidence: string[];
+  alternative_bottleneck?: string | null;
+}
+
+export interface ApiDashboardSummary {
+  userId: string;
+  declaredSelf: ApiDeclaredSelf;
+  gap: ApiGapBreakdown;
+  bottleneck?: ApiBottleneckPacket | null;
+  capacity: number;
+}
+
+export type ApiLedgerAction =
+  | "delivered"
+  | "accepted"
+  | "snoozed"
+  | "dismissed"
+  | "completed";
+
+export type ApiLedgerVerdict = "worked" | "failed" | "pending";
+
+export interface ApiLedgerEntry {
+  id: string;
+  userId: string;
+  hypothesisId: string;
+  hypothesisFamily: string;
+  action: ApiLedgerAction;
+  verdict: ApiLedgerVerdict;
+  timestamp: string;
+  unlearningTriggered: boolean;
+  lensWeightAdjustment?: Record<string, number> | null;
+  note?: string | null;
+}
+
+export interface ApiLedgerRecordRequest {
+  hypothesisId: string;
+  hypothesisFamily: string;
+  action: ApiLedgerAction;
+}
+
+export interface ApiWeeklyReport {
+  id: string;
+  userId: string;
+  gapScoreStart?: number | null;
+  gapScoreEnd: number;
+  gapDelta: number;
+  narrative: string;
+  highlights: string[];
+  generatedAt: string;
+  simulated: boolean;
+}
+
+export interface ApiProposedChange {
+  action: "add" | "remove" | "reweight";
+  attributeId: string;
+  attributeLabel: string;
+  newWeight?: number | null;
+  reason: string;
+  evidenceIds: string[];
+}
+
+export interface ApiEvolutionProposal {
+  proposalId: string;
+  userId: string;
+  declaredSelfVersion: number;
+  proposedChanges: ApiProposedChange[];
+  supportingEvidenceIds: string[];
+  narrative: string;
+  generatedAt: string;
+}
+
+export interface ApiAgentRunResult {
+  runId: string;
+  type: "weekly_report" | "evolution";
+  weeklyReport?: ApiWeeklyReport | null;
+  evolutionProposal?: ApiEvolutionProposal | null;
 }
 
 export interface ApiFeedItem {
@@ -63,16 +197,7 @@ export interface ApiFeedPage {
 }
 
 export interface ApiPreparedIntervention {
-  stack: {
-    bottleneck: string;
-    elements: Array<{
-      id: string;
-      type: string;
-      title: string;
-      sourceBadge: ApiSourceBadge;
-      explanation: ApiStackExplanation;
-    }>;
-  };
+  stack: ApiIdentityStack;
 }
 
 export interface VectorSearchResultItem {
@@ -102,4 +227,7 @@ export interface ApiPartnerProfile {
   stage: string;
   goal: string;
   matchReason?: string;
+  similarity?: number;
+  sourceBadge?: string;
+  prototype?: boolean;
 }

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 from fastapi.testclient import TestClient
 
+from app.agents.nodes.identity.node import IdentityAgentNode
 from app.core.di import get_llm_provider
 from app.main import app
 from app.providers.llm.fake import FakeLLMProvider
@@ -38,10 +41,11 @@ def fake_llm():
     app.dependency_overrides.pop(get_llm_provider, None)
 
 
-def test_onboarding_starts_with_first_fixed_question() -> None:
+def test_onboarding_starts_with_first_agent_question() -> None:
     resp = client.post("/api/v1/identity/onboarding", json={})
     assert resp.status_code == 200
     body = resp.json()
+    assert body["nextQuestion"] == IdentityAgentNode.QUESTION_POLICY[0]
     assert body["nextQuestion"] == FIXED_ONBOARDING_TOPICS[0]
     assert body["done"] is False
     assert body["draft"] is None
@@ -73,6 +77,28 @@ def test_full_onboarding_flow_produces_draft(fake_llm) -> None:
     ids = {a["id"] for a in body["draft"]["attributes"]}
     assert ids == {"public_speaker", "builder"}
     assert fake_llm.calls  # the extraction call actually happened
+
+
+def test_onboarding_extraction_uses_identity_agent_node(fake_llm) -> None:
+    with patch(
+        "app.services.identity.onboarding_orchestration._identity_agent.extract_attributes",
+        wraps=IdentityAgentNode().extract_attributes,
+    ) as mock_extract:
+        start = client.post("/api/v1/identity/onboarding", json={})
+        session_id = start.json()["sessionId"]
+        answers = [
+            "Speaker and builder.",
+            "It matters for my career.",
+            "Some practice, little shipping.",
+            "Fear of judgment.",
+            "5 hours weekly.",
+        ]
+        for answer in answers:
+            client.post(
+                "/api/v1/identity/onboarding",
+                json={"sessionId": session_id, "message": answer},
+            )
+        mock_extract.assert_called_once()
 
 
 def test_unknown_session_id_is_404() -> None:

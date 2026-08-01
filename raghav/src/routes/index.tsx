@@ -253,17 +253,6 @@ function Landing() {
         </motion.div>
       </section>
 
-      <footer className="relative z-10 border-t border-border px-6 py-10">
-        <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 font-mono text-xs text-muted-foreground sm:flex-row">
-          <div className="flex items-center gap-2">
-            <LatticeMark className="h-4 w-4 opacity-50" />
-            <span>TRELLIS · IABTM HACKATHON DEMO</span>
-          </div>
-          <p className="text-[11px] opacity-75">
-            Simulated evidence labeled in-UI · frontend MVP
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }
