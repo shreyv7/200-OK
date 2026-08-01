@@ -8,6 +8,8 @@ import pytest
 # — otherwise pytest drop_all wipes the running Trellis schema.
 os.environ.setdefault("ENV", "local")
 os.environ["AUTH_BYPASS"] = "true"
+os.environ["SEARCH_PROVIDER"] = "fake"
+os.environ["LLM_PROVIDER"] = "fake"
 os.environ["DATABASE_URL"] = (
     "postgresql+psycopg://trellis:trellis@localhost:5432/trellis_test"
 )
@@ -29,6 +31,8 @@ def _prepare_schema():
 def _force_auth_bypass(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ENV", "local")
     monkeypatch.setenv("AUTH_BYPASS", "true")
+    monkeypatch.setenv("SEARCH_PROVIDER", "fake")
+    monkeypatch.setenv("LLM_PROVIDER", "fake")
     monkeypatch.setenv(
         "DATABASE_URL",
         "postgresql+psycopg://trellis:trellis@localhost:5432/trellis_test",
