@@ -1,10 +1,16 @@
-# Python
+# Dependencies
+node_modules/
+
+# Python & Virtual Environments
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
 env/
+.venv/
+venv/
+ENV/
 build/
 develop-eggs/
 dist/
@@ -20,11 +26,6 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-
-# Virtual Environments
-.venv
-venv/
-ENV/
 
 # Testing & Coverage
 .pytest_cache/
