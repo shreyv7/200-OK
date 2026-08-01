@@ -81,6 +81,12 @@ class Settings(BaseSettings):
     github_oauth_client_secret: str | None = None
     github_oauth_redirect_uri: str = "http://localhost:8002/api/v1/integrations/github/callback"
 
+    # Neo4j Graph Provider DI settings
+    graph_provider: Literal["fake", "neo4j"] = "fake"
+    neo4j_uri: str = "bolt://localhost:7687"
+    neo4j_username: str = "neo4j"
+    neo4j_password: str = "trellis_password"
+
 
 
 
