@@ -4,7 +4,10 @@ import type {
   ApiFeedPage,
   ApiMeUser,
   ApiOnboardingTurnResponse,
+  ApiPartnerProfile,
   ApiPreparedIntervention,
+  QdrantStatusResponse,
+  SemanticSearchResponse,
 } from "./types";
 
 export function getMe() {
@@ -52,4 +55,24 @@ export function recordFeedEvent(
     method: "POST",
     body: JSON.stringify({ itemId, event, metadata }),
   });
+}
+
+export function searchSemantic(query: string, collection: string = "all", limit: number = 5) {
+  const params = new URLSearchParams({ q: query, collection, limit: String(limit) });
+  return apiFetch<SemanticSearchResponse>(`/search/semantic?${params.toString()}`);
+}
+
+export function getVectorSearchStatus() {
+  return apiFetch<QdrantStatusResponse>("/search/status");
+}
+
+export function reindexVectorCatalog() {
+  return apiFetch<{ status: string; message: string; counts?: Record<string, number> }>(
+    "/search/vector/index",
+    { method: "POST" },
+  );
+}
+
+export function getPartnerMatches() {
+  return apiFetch<ApiPartnerProfile[]>("/partners/matches");
 }

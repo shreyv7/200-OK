@@ -95,6 +95,15 @@ class Settings(BaseSettings):
     tavily_api_key: str | None = None
     tavily_timeout_seconds: float = 1.5
 
+    # Vector DB Provider (Qdrant Cloud)
+    # Default fake so CI/local smoke never require Qdrant Cloud; set
+    # VECTOR_DB_PROVIDER=qdrant + QDRANT_URL to enable live vector search.
+    vector_db_provider: Literal["fake", "qdrant"] = "fake"
+    qdrant_url: str | None = None
+    qdrant_api_key: str | None = None
+    qdrant_collection_prefix: str = "trellis"
+
+
     # YouTube Data API (work.md C2).
     youtube_api_key: str | None = None
     youtube_timeout_seconds: float = 2.0
@@ -111,6 +120,11 @@ class Settings(BaseSettings):
     github_oauth_client_id: str | None = None
     github_oauth_client_secret: str | None = None
     github_oauth_redirect_uri: str = "http://localhost:8002/api/v1/integrations/github/callback"
+
+    # Notion OAuth settings
+    notion_oauth_client_id: str | None = None
+    notion_oauth_client_secret: str | None = None
+    notion_oauth_redirect_uri: str = "http://localhost:8002/api/v1/integrations/notion/callback"
 
 
 

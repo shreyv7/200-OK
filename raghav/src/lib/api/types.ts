@@ -74,3 +74,32 @@ export interface ApiPreparedIntervention {
     }>;
   };
 }
+
+export interface VectorSearchResultItem {
+  id: string;
+  collection: string;
+  score: number;
+  payload: Record<string, unknown>;
+}
+
+export interface SemanticSearchResponse {
+  query: string;
+  total_results: number;
+  vector_store_active: boolean;
+  results: VectorSearchResultItem[];
+}
+
+export interface QdrantStatusResponse {
+  enabled: boolean;
+  url: string | null;
+  collection_prefix: string;
+  collections: string[];
+}
+
+export interface ApiPartnerProfile {
+  id: string;
+  name: string;
+  stage: string;
+  goal: string;
+  matchReason?: string;
+}

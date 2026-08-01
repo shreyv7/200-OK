@@ -22,6 +22,7 @@ from app.repositories import evidence_repository
 from app.repositories.integration_repository import IntegrationRepository
 from app.schemas.evidence import RawMCPPayload
 from app.services.github.sync import GitHubSyncService
+from tests.conftest import ensure_user
 
 TEST_DATABASE_URL = "sqlite:///./test_github_connector.db"
 engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
@@ -140,6 +141,7 @@ def test_sync_returns_zero_if_no_connection():
 def test_sync_creates_evidence_events_from_commits():
     """With an active GitHub connection, sync ingests real commits as EvidenceEvents."""
     db = TestingSessionLocal()
+    ensure_user(db, "demo-user-aarav")
     repo = IntegrationRepository(db)
     user_id = "demo-user-aarav"
 
@@ -174,6 +176,7 @@ def test_sync_creates_evidence_events_from_commits():
 def test_sync_creates_evidence_from_merged_pr():
     """Sync ingests merged PRs as published_artifact EvidenceEvents."""
     db = TestingSessionLocal()
+    ensure_user(db, "demo-user-aarav")
     repo = IntegrationRepository(db)
     user_id = "demo-user-aarav"
 
@@ -205,6 +208,7 @@ def test_sync_creates_evidence_from_merged_pr():
 def test_sync_is_idempotent():
     """Syncing the same GitHub activity twice should ingest 0 new events on second run."""
     db = TestingSessionLocal()
+    ensure_user(db, "demo-user-aarav")
     repo = IntegrationRepository(db)
     user_id = "demo-user-aarav"
 
@@ -232,6 +236,7 @@ def test_sync_is_idempotent():
 def test_sync_endpoint_returns_202(client):
     """POST /api/v1/github/sync with active connection returns 202 Accepted and synced count."""
     db = TestingSessionLocal()
+    ensure_user(db, "demo-user-aarav")
     repo = IntegrationRepository(db)
     user_id = "demo-user-aarav"
 

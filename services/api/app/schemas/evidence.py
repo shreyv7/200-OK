@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-SourceProvider = Literal["github", "google_calendar", "youtube", "notion", "trellis"]
+SourceProvider = Literal["github", "google_calendar", "youtube", "notion", "trellis", "x"]
 EventCategory = Literal["creation", "passive_learning", "focus_drift", "reflection"]
 
 

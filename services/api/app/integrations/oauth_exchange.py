@@ -130,3 +130,50 @@ def exchange_github_code(
         scopes=scopes,
         expires_at=expires_at,
     )
+
+
+def exchange_notion_code(
+    code: str,
+    redirect_uri: str,
+    client_id: str,
+    client_secret: str,
+) -> TokenResponse:
+    """Exchanges Notion OAuth authorization code for a long-lived access token.
+
+    Key differences from Google/GitHub:
+    - Uses HTTP Basic Auth (base64 of client_id:client_secret) in Authorization header.
+    - Body must be JSON (not form-encoded).
+    - Notion does NOT issue refresh tokens; access tokens are long-lived (no expiry).
+    - Returns scopes based on integration capabilities, not a server-returned scope string.
+    """
+    import base64
+
+    token_url = "https://api.notion.com/v1/oauth/token"
+    credentials = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
+    headers = {
+        "Authorization": f"Basic {credentials}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "code": code,
+        "grant_type": "authorization_code",
+        "redirect_uri": redirect_uri,
+    }
+    with httpx.Client(timeout=10.0) as client:
+        resp = client.post(token_url, json=payload, headers=headers)
+        resp.raise_for_status()
+        data = resp.json()
+
+    if "error" in data:
+        raise ValueError(
+            f"Notion OAuth error: {data.get('error_description', data.get('error', 'unknown'))}"
+        )
+
+    access_token = data["access_token"]
+    # Notion does not issue refresh tokens nor explicit expiry — tokens are long-lived.
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=None,
+        scopes=["read_content", "read_user_without_email"],
+        expires_at=None,
+    )

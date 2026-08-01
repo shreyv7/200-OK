@@ -11,7 +11,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { AppShell } from "@/components/trellis/AppShell";
 import { RequireAuth } from "@/authentication";
+import { VectorSearchBar } from "@/components/VectorSearchBar";
 import { ArrowUpRight, Zap } from "lucide-react";
+
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -155,7 +157,10 @@ function Dashboard() {
           </div>
         </div>
 
+        <VectorSearchBar />
+
         <section>
+
           <div className="flex items-end justify-between gap-4 mb-5">
             <div>
               <p className="label-eyebrow text-signal">Today&apos;s Identity Stack</p>
