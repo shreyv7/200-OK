@@ -11,6 +11,7 @@ from app.models.intervention import InterventionModel
 from app.models.intervention_budget import InterventionBudgetModel
 from app.models.kpi_snapshot import KPISnapshotModel
 from app.models.ledger_entry import LedgerEntryModel
+from app.models.llm_usage_budget import LLMUsageBudgetModel
 from app.models.onboarding_session import OnboardingSession
 from app.models.onboarding_turn import OnboardingTurn
 from app.models.resource_cache import ResourceCacheModel
@@ -29,6 +30,7 @@ __all__ = [
     "InterventionModel",
     "LedgerEntryModel",
     "InterventionBudgetModel",
+    "LLMUsageBudgetModel",
     "GrowthStoryModel",
     "ToolModel",
     "MentorModel",

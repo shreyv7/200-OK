@@ -18,7 +18,7 @@ You are the Trellis Identity Agent. You analyze an onboarding interview transcri
 5. Output valid JSON adhering strictly to the JSON Schema provided.
 
 ## Input Transcript
-{interview_transcript}
+{{ interview_transcript }}
 
 ## Required JSON Schema
-{output_schema_json}
+{{ output_schema_json }}

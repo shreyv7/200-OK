@@ -13,12 +13,13 @@ from __future__ import annotations
 
 import json
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.models.onboarding_turn import OnboardingTurn
-from app.prompts.loader import load_prompt
+from app.prompts.loader import build_messages
 from app.providers.llm.base import LLMProvider
+from app.providers.llm.repair import generate_structured_with_repair
 from app.repositories import onboarding_repository, twin_repository
 from app.schemas.identity import IdentityAttribute
 from app.schemas.onboarding import OnboardingTurnResponse
@@ -44,32 +45,25 @@ def _format_transcript(turns: list[OnboardingTurn]) -> str:
     return "\n".join(f"{t.role}: {t.content}" for t in turns)
 
 
-def _extract_attributes(llm_provider: LLMProvider, turns: list[OnboardingTurn]) -> list[IdentityAttribute]:
-    template = load_prompt("identity/declared_self_extraction_v1")
-    schema = _ExtractionSchema.model_json_schema()
-    prompt = template.replace(
-        "{interview_transcript}", _format_transcript(turns)
-    ).replace("{output_schema_json}", json.dumps(schema))
-    messages = [
-        {"role": "system", "content": "You are the Trellis Identity Agent."},
-        {"role": "user", "content": prompt},
-    ]
+def _validate_extraction_response(raw: object) -> _ExtractionSchema:
+    """B6 (docs/work.md): raises pydantic.ValidationError on a malformed
+    response so generate_structured_with_repair() knows to retry once —
+    this was the original hand-rolled retry-once pattern (B1) that B4's
+    shared helper was extracted from; folded onto that shared helper here
+    so this call site matches the other three instead of maintaining its
+    own copy of the same retry logic."""
+    return _ExtractionSchema.model_validate(raw)
 
-    raw = llm_provider.generate_structured(schema=schema, messages=messages)
-    try:
-        return _ExtractionSchema.model_validate(raw).attributes
-    except ValidationError as first_error:
-        messages.append(
-            {
-                "role": "user",
-                "content": (
-                    f"Your previous output was invalid: {first_error}. "
-                    "Return valid JSON matching the schema exactly."
-                ),
-            }
-        )
-        raw_retry = llm_provider.generate_structured(schema=schema, messages=messages)
-        return _ExtractionSchema.model_validate(raw_retry).attributes
+
+def _extract_attributes(llm_provider: LLMProvider, turns: list[OnboardingTurn]) -> list[IdentityAttribute]:
+    schema = _ExtractionSchema.model_json_schema()
+    messages = build_messages(
+        "identity/declared_self_extraction_v1",
+        interview_transcript=_format_transcript(turns),
+        output_schema_json=json.dumps(schema),
+    )
+    validated = generate_structured_with_repair(llm_provider, schema, messages, _validate_extraction_response)
+    return validated.attributes
 
 
 def advance_turn(

@@ -8,10 +8,21 @@ from datetime import datetime, timezone
 import uuid
 from typing import Any, List, Optional
 
+from app.prompts.loader import build_messages
+from app.providers.llm.repair import generate_structured_with_repair
 from app.schemas.evidence import EvidenceEvent
 from app.schemas.identity import DeclaredSelf
 from app.schemas.report import WeeklyReport
 from app.services.identity.scoring.gap import GapResult
+
+
+def _validate_report_response(raw: object) -> dict:
+    """B4 (docs/work.md): raises on a malformed LLM response so
+    generate_structured_with_repair() knows to retry once before this
+    function falls back to the deterministic v0 report."""
+    if not isinstance(raw, dict) or "narrative" not in raw or "highlights" not in raw:
+        raise ValueError("response must be a JSON object with 'narrative' and 'highlights' keys")
+    return raw
 
 
 def _build_v0_fallback_report(
@@ -91,24 +102,18 @@ def generate_weekly_report(
         summary_lines = [f"- {e.type} ({e.category if hasattr(e, 'category') else 'evidence'})" for e in events[:10]]
         evidence_str = "\n".join(summary_lines) if summary_lines else "No recent events"
 
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "You are the Trellis Weekly Becoming Report generator. "
-                    "Focus on identity movement, NOT hours or time-tracking. "
-                    "Return JSON with 'narrative' (string) and 'highlights' (array of strings)."
-                ),
-            },
-            {
-                "role": "user",
-                "content": (
-                    f"User: {user_id}\n"
-                    f"Gap score start: {gap_start}, end: {gap_end}, delta: {gap_delta}\n"
-                    f"Evidence touchpoints:\n{evidence_str}"
-                ),
-            },
-        ]
+        # B6 (docs/work.md): build_messages() is the single prompt facade —
+        # no prompt template previously existed for this call site at all
+        # (identity/weekly_report_v1.md is new); this used to hardcode its
+        # own inline system+user text instead.
+        messages = build_messages(
+            "identity/weekly_report_v1",
+            user_id=user_id,
+            gap_start=gap_start,
+            gap_end=gap_end,
+            gap_delta=gap_delta,
+            evidence_summary=evidence_str,
+        )
 
         schema = {
             "type": "object",
@@ -120,7 +125,7 @@ def generate_weekly_report(
         }
 
         if hasattr(llm_provider, "generate_structured"):
-            res = llm_provider.generate_structured(schema=schema, messages=messages)
+            res = generate_structured_with_repair(llm_provider, schema, messages, _validate_report_response)
         elif hasattr(llm_provider, "generate"):
             res = llm_provider.generate(messages)
         else:
