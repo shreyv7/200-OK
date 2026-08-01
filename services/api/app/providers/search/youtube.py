@@ -2,7 +2,7 @@
 
 Fetches video metadata when a lens needs video/media content (e.g. Next Step /
 knowledge lens). Falls back to curated media if API key is absent, rate-limited,
-or timed out.
+or timed out. Keys rotate on 403/429 so exhausted quotas do not empty the feed.
 """
 
 from __future__ import annotations
@@ -48,6 +48,28 @@ _CURATED_YOUTUBE_FALLBACKS: list[Document] = [
             "thumbnail_url": "https://img.youtube.com/vi/6avJHaC3C2U/hqdefault.jpg",
         },
     ),
+    Document(
+        title="Deep Work: Rules for Focused Success in a Distracted World",
+        url="https://www.youtube.com/watch?v=fgXF5H-5c0I",
+        extract="Cal Newport on building focus as a competitive advantage.",
+        source="curated_youtube_fallback",
+        metadata={
+            "video_id": "fgXF5H-5c0I",
+            "channel_title": "Author Talks",
+            "thumbnail_url": "https://img.youtube.com/vi/fgXF5H-5c0I/hqdefault.jpg",
+        },
+    ),
+    Document(
+        title="Lex Fridman Podcast — Conversations that Matter",
+        url="https://www.youtube.com/watch?v=DxREm3s1scA",
+        extract="Long-form interview energy for intellectual passive scroll.",
+        source="curated_youtube_fallback",
+        metadata={
+            "video_id": "DxREm3s1scA",
+            "channel_title": "Lex Fridman",
+            "thumbnail_url": "https://img.youtube.com/vi/DxREm3s1scA/hqdefault.jpg",
+        },
+    ),
 ]
 
 
@@ -56,7 +78,7 @@ class YouTubeMediaProvider(SearchProvider):
         self._timeout_seconds = timeout_seconds
         self._endpoint = "https://www.googleapis.com/youtube/v3/search"
         if isinstance(api_key, list):
-            self._api_keys = [k.strip() for k in api_key if k.strip()]
+            self._api_keys = [k.strip() for k in api_key if k and k.strip()]
         elif isinstance(api_key, str) and api_key.strip():
             self._api_keys = [k.strip() for k in api_key.split(",") if k.strip()]
         else:
@@ -66,8 +88,19 @@ class YouTubeMediaProvider(SearchProvider):
     def _api_key(self) -> str | None:
         return self._api_keys[0] if self._api_keys else None
 
-    def search(self, query: str, opts: dict[str, Any] | None = None) -> list[Document]:
+    def _promote_key(self, key: str) -> None:
+        """Keep a working key at the front so subsequent queries skip burned ones."""
+        if key not in self._api_keys:
+            return
+        self._api_keys = [key, *[k for k in self._api_keys if k != key]]
 
+    def _demote_key(self, key: str) -> None:
+        """Push exhausted / rate-limited keys to the end of the rotation."""
+        if key not in self._api_keys or len(self._api_keys) < 2:
+            return
+        self._api_keys = [*[k for k in self._api_keys if k != key], key]
+
+    def search(self, query: str, opts: dict[str, Any] | None = None) -> list[Document]:
         if not self._api_keys:
             return self.get_fallback(query)
 
@@ -79,7 +112,8 @@ class YouTubeMediaProvider(SearchProvider):
         relevance_language = opts.get("relevanceLanguage")
         video_category_id = opts.get("videoCategoryId")
 
-        for key in self._api_keys:
+        # Snapshot order so demotions during the loop don't skip keys.
+        for key in list(self._api_keys):
             params: dict[str, Any] = {
                 "part": "snippet",
                 "type": "video",
@@ -98,8 +132,10 @@ class YouTubeMediaProvider(SearchProvider):
             try:
                 with httpx.Client(timeout=self._timeout_seconds) as client:
                     res = client.get(self._endpoint, params=params)
+                    if res.status_code in {401, 403, 429}:
+                        self._demote_key(key)
+                        continue
                     if res.status_code != 200:
-                        # Try next rotation key on 403 quota or 429 rate limit
                         continue
                     data = res.json()
 
@@ -140,13 +176,14 @@ class YouTubeMediaProvider(SearchProvider):
                             )
                         )
                 if documents:
+                    self._promote_key(key)
                     return documents
 
             except Exception:
+                self._demote_key(key)
                 continue
 
         return self.get_fallback(query)
-
 
     def get_fallback(self, query: str) -> list[Document]:
         return list(_CURATED_YOUTUBE_FALLBACKS)

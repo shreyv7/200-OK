@@ -180,6 +180,16 @@ def build_feed(
     drift_provider = youtube_provider or search_provider
     drift_pool = _fetch_quality_videos(drift_provider, seen=seen, limit=6)
 
+    # If live YouTube is exhausted, still paint the phone with curated videos.
+    if len(drift_pool) < 3 and youtube_provider is not None:
+        try:
+            fallback = getattr(youtube_provider, "get_fallback", None)
+            curated = list(fallback(_PASSIVE_QUERIES[0]) if callable(fallback) else [])
+        except Exception:
+            curated = []
+        drift_pool.extend(_dedupe_docs(curated, seen=seen))
+        drift_pool = drift_pool[:6]
+
     neutral_docs = _dedupe_docs(
         _safe_search(
             search_provider or youtube_provider,
@@ -189,6 +199,15 @@ def build_feed(
         ),
         seen=seen,
     )
+    if len(neutral_docs) < 2 and search_provider is not None:
+        try:
+            fallback = getattr(search_provider, "get_fallback", None)
+            if not callable(fallback) and youtube_provider is not None:
+                fallback = getattr(youtube_provider, "get_fallback", None)
+            curated = list(fallback(_NEUTRAL_QUERY) if callable(fallback) else [])
+        except Exception:
+            curated = []
+        neutral_docs.extend(_dedupe_docs(curated, seen=seen))
 
     low_value_items = [
         _document_item(doc, kind="low_value", prefix="drift", index=i)
@@ -206,13 +225,17 @@ def build_feed(
     ]
 
     # Persona-specific Spotify deep-links (no OAuth) — stable per user.
+    # Always include playlists; thumbnail/network failures must not drop cards.
     spotify_user = user_id or (stack.userId if stack else "anonymous")
-    spotify_items = playlists_as_feed_items(
-        spotify_user,
-        bottleneck=stack.bottleneck if stack else None,
-        attribute_labels=attribute_labels,
-        count=2,
-    )
+    try:
+        spotify_items = playlists_as_feed_items(
+            spotify_user,
+            bottleneck=stack.bottleneck if stack else None,
+            attribute_labels=attribute_labels,
+            count=2,
+        )
+    except Exception:
+        spotify_items = []
     resources = [*resources, *spotify_items]
 
     # Interleave so Moment Detector can still see a low-value majority while

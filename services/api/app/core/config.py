@@ -118,9 +118,25 @@ class Settings(BaseSettings):
     neo4j_user: str = "neo4j"
     neo4j_password: str | None = None
 
-    # YouTube Data API (work.md C2).
+    # YouTube Data API (work.md C2). Comma-separated keys rotate on 403/429.
     youtube_api_key: str | None = None
+    # Optional extra pool (same semantics as GEMINI_API_KEYS).
+    youtube_api_keys: str = ""
     youtube_timeout_seconds: float = 2.0
+
+    def youtube_api_key_pool(self) -> list[str]:
+        """Ordered, de-duplicated YouTube key pool for quota rotation."""
+        pool: list[str] = []
+        if self.youtube_api_key:
+            for raw in self.youtube_api_key.split(","):
+                key = raw.strip()
+                if key and key not in pool:
+                    pool.append(key)
+        for raw in self.youtube_api_keys.split(","):
+            key = raw.strip()
+            if key and key not in pool:
+                pool.append(key)
+        return pool
 
     # Token encryption key for OAuth credentials (Fernet symmetric key)
     token_encryption_key: str | None = None

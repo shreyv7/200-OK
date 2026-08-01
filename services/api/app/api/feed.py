@@ -64,28 +64,47 @@ def get_feed(
     llm_provider: LLMProvider = Depends(get_llm_provider),
     settings: Settings = Depends(get_settings),
 ) -> FeedPage:
-    live = settings.search_provider != "fake" and not isinstance(
-        search_provider, FakeSearchProvider
-    )
-    stack = _active_or_create_stack(
-        db,
-        user_id,
-        search_provider,
-        llm_provider,
-        prefer_fresh_live=live,
-    )
-    declared = twin_repository.get_active_declared_self(db, user_id)
-    attribute_labels = (
-        [attr.label for attr in declared.attributes if attr.label]
-        if declared is not None
-        else []
-    )
+    """Growth Feed — never surfaces provider outages to the client.
+
+    YouTube / Tavily / Spotify failures fall back to curated cards so the
+    phone UI always has something to scroll.
+    """
+    try:
+        live = settings.search_provider != "fake" and not isinstance(
+            search_provider, FakeSearchProvider
+        )
+        stack = _active_or_create_stack(
+            db,
+            user_id,
+            search_provider,
+            llm_provider,
+            prefer_fresh_live=live,
+        )
+        declared = twin_repository.get_active_declared_self(db, user_id)
+        attribute_labels = (
+            [attr.label for attr in declared.attributes if attr.label]
+            if declared is not None
+            else []
+        )
+        page = build_feed(
+            stack,
+            search_provider=search_provider,
+            youtube_provider=youtube_provider,
+            user_id=user_id,
+            attribute_labels=attribute_labels,
+        )
+        if page.items:
+            return page
+    except Exception:
+        pass
+
+    # Last-resort curated feed — still 200 OK, never an error banner.
     return build_feed(
-        stack,
+        None,
         search_provider=search_provider,
         youtube_provider=youtube_provider,
         user_id=user_id,
-        attribute_labels=attribute_labels,
+        attribute_labels=[],
     )
 
 

@@ -1,12 +1,21 @@
-import { UserButton, useUser } from "@clerk/react";
+import { useClerk, useUser } from "@clerk/react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "motion/react";
-import { FileText, LayoutDashboard, Rss, ScrollText, Settings, Users } from "lucide-react";
+import {
+  FileText,
+  LayoutDashboard,
+  LogOut,
+  Rss,
+  ScrollText,
+  Settings,
+  Users,
+} from "lucide-react";
 import { LatticeMark } from "./Lattice";
 import { CapacitySlider } from "./CapacitySlider";
 import { SimulatorDrawer } from "./SimulatorDrawer";
 import { useTrellis } from "@/lib/trellis/store";
+import { setAuthTokenGetter } from "@/authentication/token";
 
 const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -30,8 +39,28 @@ export function AppShell({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { unlearning, clearUnlearning, calendarPing } = useTrellis();
   const { user } = useUser();
+  const { signOut } = useClerk();
   const [simOpen, setSimOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const isDev = import.meta.env.DEV;
+
+  const handleSignOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    setAuthTokenGetter(null);
+    document.dispatchEvent(
+      new CustomEvent("trellis:set-auth-token", {
+        detail: { token: null },
+        bubbles: true,
+      }),
+    );
+    window.postMessage({ type: "TRELLIS_SET_AUTH_TOKEN", token: null }, "*");
+    try {
+      await signOut({ redirectUrl: "/" });
+    } catch {
+      setSigningOut(false);
+    }
+  };
 
   const displayName =
     user?.fullName ||
@@ -106,17 +135,33 @@ export function AppShell({
           })}
         </nav>
 
-        <div className="shrink-0 px-5 py-5 border-t border-border">
+        <div className="shrink-0 space-y-3 border-t border-border px-5 py-5">
+          <button
+            type="button"
+            onClick={() => void handleSignOut()}
+            disabled={signingOut}
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-foreground px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-background transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <LogOut className="h-3.5 w-3.5" strokeWidth={1.75} />
+            {signingOut ? "Signing out…" : "Sign out"}
+          </button>
           <div className="flex items-center gap-2.5">
-            <UserButton afterSignOutUrl="/" />
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-foreground text-[10px] font-mono font-medium text-background md:hidden">
-              {avatarLetter}
-            </div>
-            <div className="leading-tight min-w-0">
-              <p className="text-[11px] font-medium text-foreground truncate">
+            {user?.imageUrl ? (
+              <img
+                src={user.imageUrl}
+                alt=""
+                className="h-7 w-7 shrink-0 rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-foreground text-[10px] font-mono font-medium text-background">
+                {avatarLetter}
+              </div>
+            )}
+            <div className="min-w-0 leading-tight">
+              <p className="truncate text-[11px] font-medium text-foreground">
                 {displayName}
               </p>
-              <p className="font-mono text-[9.5px] text-muted-foreground truncate">
+              <p className="truncate font-mono text-[9.5px] text-muted-foreground">
                 {displaySub}
               </p>
             </div>

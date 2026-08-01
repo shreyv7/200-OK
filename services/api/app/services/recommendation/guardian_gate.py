@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -15,10 +15,17 @@ from app.services.recommendation.guardian import GuardianContext, GuardianDecisi
 from app.services.recommendation.variants import generate_variants, select_variant_by_intensity
 
 
+def _as_utc(value: datetime) -> datetime:
+    """Normalize naive/aware timestamps so comparisons never raise TypeError."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
 def recent_dismissal_rate(db: Session, user_id: str, *, window_days: int = 14) -> float:
-    cutoff = datetime.utcnow() - timedelta(days=window_days)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=window_days)
     entries = ledger_repository.list_for_user(db, user_id)
-    recent = [entry for entry in entries if entry.timestamp >= cutoff]
+    recent = [entry for entry in entries if _as_utc(entry.timestamp) >= cutoff]
     if not recent:
         return 0.0
     dismissals = sum(1 for entry in recent if entry.action == "dismissed")

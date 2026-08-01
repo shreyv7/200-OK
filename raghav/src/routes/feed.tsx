@@ -88,8 +88,10 @@ function GrowthFeed() {
   } = useTrellis();
 
   const [items, setItems] = useState<FeedItem[]>([]);
-  const [feedStatus, setFeedStatus] = useState<"loading" | "ready" | "error">(
-    "loading",
+  // Gate live YouTube/Tavily until the user asks — refresh alone must not burn quota.
+  const [feedRequested, setFeedRequested] = useState(false);
+  const [feedStatus, setFeedStatus] = useState<"idle" | "loading" | "ready">(
+    "idle",
   );
   const [preparedCard, setPreparedCard] = useState<InterventionCard | null>(null);
   const [scrolls, setScrolls] = useState<ScrollRecord[]>([]);
@@ -135,45 +137,50 @@ function GrowthFeed() {
   );
 
   useEffect(() => {
+    if (!feedRequested) return;
     let cancelled = false;
     setFeedStatus("loading");
-    void Promise.all([getGrowthFeed(), getPreparedFeedIntervention()])
-      .then(([feed, prepared]) => {
+    // Feed providers always fall back server-side; never flash a key-error banner.
+    void Promise.allSettled([getGrowthFeed(), getPreparedFeedIntervention()])
+      .then(([feedResult, preparedResult]) => {
         if (cancelled) return;
-        setItems(
-          feed.items.map((item) =>
-            item.kind === "resource"
-              ? { id: item.id, mode: "resource" as const, resource: item }
-              : {
-                  id: item.id,
-                  mode: "scroll" as const,
-                  kind: item.kind,
-                  data: item,
-                },
-          ),
-        );
-        const action = prepared.stack.elements.find((element) => element.type === "micro_mission")
-          ?? prepared.stack.elements[0];
-        if (action) {
-          setPreparedCard({
-            id: action.id,
-            lens: action.type === "media" || action.type === "knowledge" ? "Media" : "Micro-Action",
-            action: action.title,
-            reasoning: action.explanation.whyNow,
-            duration: "A focused next step",
-            hypothesisId: prepared.stack.hypothesisId,
-            hypothesisFamily: action.type,
-          });
+        if (feedResult.status === "fulfilled") {
+          setItems(
+            feedResult.value.items.map((item) =>
+              item.kind === "resource"
+                ? { id: item.id, mode: "resource" as const, resource: item }
+                : {
+                    id: item.id,
+                    mode: "scroll" as const,
+                    kind: item.kind,
+                    data: item,
+                  },
+            ),
+          );
+        }
+        if (preparedResult.status === "fulfilled") {
+          const prepared = preparedResult.value;
+          const action =
+            prepared.stack.elements.find((element) => element.type === "micro_mission")
+            ?? prepared.stack.elements[0];
+          if (action) {
+            setPreparedCard({
+              id: action.id,
+              lens: action.type === "media" || action.type === "knowledge" ? "Media" : "Micro-Action",
+              action: action.title,
+              reasoning: action.explanation.whyNow,
+              duration: "A focused next step",
+              hypothesisId: prepared.stack.hypothesisId,
+              hypothesisFamily: action.type,
+            });
+          }
         }
         setFeedStatus("ready");
-      })
-      .catch(() => {
-        if (!cancelled) setFeedStatus("error");
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [feedRequested]);
 
   const morphNextCard = useCallback(
     (result: ReturnType<typeof evaluateMomentDetector>) => {
@@ -370,6 +377,7 @@ function GrowthFeed() {
                 resolvedIds={resolvedIds}
                 onCardVisible={onCardVisible}
                 onResolveIntervention={resolveIntervention}
+                onLoadFeed={() => setFeedRequested(true)}
               />
             )}
           </div>
@@ -424,6 +432,7 @@ function GrowthFeed() {
                 resolvedIds={resolvedIds}
                 onCardVisible={onCardVisible}
                 onResolveIntervention={resolveIntervention}
+                onLoadFeed={() => setFeedRequested(true)}
                 elevated
               />
               <p className="font-mono text-[10px] text-white/50">
@@ -447,13 +456,14 @@ function PhoneFrame({
   resolvedIds,
   onCardVisible,
   onResolveIntervention,
+  onLoadFeed,
   elevated = false,
   className = "",
 }: {
   detectorState: DetectorState;
   feedHeightClass: string;
   scrollRootRef: (node: HTMLDivElement | null) => void;
-  feedStatus: "loading" | "ready" | "error";
+  feedStatus: "idle" | "loading" | "ready";
   items: FeedItem[];
   scrollRoot: HTMLElement | null;
   resolvedIds: string[];
@@ -463,6 +473,7 @@ function PhoneFrame({
     action: "accept" | "snooze" | "dismiss",
     card: InterventionCard,
   ) => void;
+  onLoadFeed: () => void;
   elevated?: boolean;
   className?: string;
 }) {
@@ -498,15 +509,21 @@ function PhoneFrame({
           className={`${feedHeightClass} space-y-2.5 overflow-y-auto overscroll-contain px-3 py-2.5 scroll-smooth`}
           style={{ scrollbarWidth: "thin" }}
         >
-          {feedStatus === "loading" && (
+          {feedStatus === "idle" && (
+            <div className="flex items-center justify-center px-4 py-16">
+              <button
+                type="button"
+                onClick={onLoadFeed}
+                className="inline-flex items-center gap-2 rounded-full bg-signal px-4 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-white transition-opacity hover:opacity-90"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Load feed
+              </button>
+            </div>
+          )}
+          {feedStatus === "loading" && items.length === 0 && (
             <p className="py-16 text-center font-mono text-[10px] text-muted-foreground">
               loading your feed :)
-            </p>
-          )}
-          {feedStatus === "error" && (
-            <p className="px-4 py-16 text-center text-sm text-muted-foreground">
-              Could not load the live feed. Confirm the API is running with
-              SEARCH_PROVIDER=combined and valid YouTube/Tavily keys.
             </p>
           )}
           {items.map((item) =>

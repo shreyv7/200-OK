@@ -23,4 +23,20 @@ class CompositeSearchProvider(SearchProvider):
             except Exception:
                 # Individual providers must not make the retrieval chain empty.
                 continue
+        return documents or self.get_fallback(query)
+
+    def get_fallback(self, query: str) -> list[Document]:
+        documents: list[Document] = []
+        seen_urls: set[str] = set()
+        for provider in self._providers:
+            fallback = getattr(provider, "get_fallback", None)
+            if not callable(fallback):
+                continue
+            try:
+                for document in fallback(query):
+                    if document.url not in seen_urls:
+                        seen_urls.add(document.url)
+                        documents.append(document)
+            except Exception:
+                continue
         return documents

@@ -328,18 +328,24 @@ def playlists_as_feed_items(
     count: int = 2,
 ) -> list[FeedItem]:
     items: list[FeedItem] = []
-    for index, playlist in enumerate(
-        select_playlists_for_user(
+    try:
+        selected = select_playlists_for_user(
             user_id,
             bottleneck=bottleneck,
             attribute_labels=attribute_labels,
             count=count,
         )
-    ):
-        thumbnail = fetch_playlist_thumbnail(playlist.playlist_id)
+    except Exception:
+        selected = list(_DEFAULT)[:count]
+
+    for index, playlist in enumerate(selected):
+        try:
+            thumbnail = fetch_playlist_thumbnail(playlist.playlist_id)
+        except Exception:
+            thumbnail = None
         items.append(
             FeedItem(
-                id=f"spotify-{user_id[:8]}-{playlist.playlist_id}-{index}",
+                id=f"spotify-{(user_id or 'anon')[:8]}-{playlist.playlist_id}-{index}",
                 kind="resource",
                 title=playlist.title,
                 tag="Spotify",

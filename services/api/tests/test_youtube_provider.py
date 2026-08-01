@@ -94,11 +94,15 @@ def test_youtube_network_exception_returns_fallback() -> None:
 
 
 def test_get_youtube_provider_di() -> None:
-    settings = Settings(youtube_api_key="AIzaSyConfigKey", youtube_timeout_seconds=2.5)
+    settings = Settings(
+        youtube_api_key="AIzaSyConfigKey,AIzaSyExtra",
+        youtube_api_keys="AIzaSyPoolOnly",
+        youtube_timeout_seconds=2.5,
+    )
     provider = get_youtube_provider(settings)
 
     assert isinstance(provider, YouTubeMediaProvider)
-    assert provider._api_key == "AIzaSyConfigKey"
+    assert provider._api_keys == ["AIzaSyConfigKey", "AIzaSyExtra", "AIzaSyPoolOnly"]
     assert provider._timeout_seconds == 2.5
 
 

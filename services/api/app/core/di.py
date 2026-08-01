@@ -104,10 +104,9 @@ def get_search_provider(settings: Settings = Depends(get_settings)) -> SearchPro
     """Select the configured SearchProvider. Defaults to fake — never
     requires a live Tavily key unless SEARCH_PROVIDER is explicitly set."""
     if settings.search_provider == "tavily":
-        if not settings.tavily_api_key:
-            raise RuntimeError("SEARCH_PROVIDER=tavily requires TAVILY_API_KEY to be set")
         from app.providers.search.tavily import TavilySearchProvider
 
+        # Missing/invalid keys still resolve — provider serves curated fallbacks.
         return TavilySearchProvider(
             api_key=settings.tavily_api_key, timeout_seconds=settings.tavily_timeout_seconds
         )
@@ -119,26 +118,25 @@ def get_search_provider(settings: Settings = Depends(get_settings)) -> SearchPro
         from app.providers.search.composite import CompositeSearchProvider
         from app.providers.search.tavily import TavilySearchProvider
 
-        providers: list[SearchProvider] = [get_youtube_provider(settings)]
-        if settings.tavily_api_key:
-            providers.insert(
-                0,
-                TavilySearchProvider(
-                    api_key=settings.tavily_api_key,
-                    timeout_seconds=settings.tavily_timeout_seconds,
-                ),
-            )
-        return CompositeSearchProvider(*providers)
+        # Always include both providers so either side can fall back silently.
+        return CompositeSearchProvider(
+            TavilySearchProvider(
+                api_key=settings.tavily_api_key,
+                timeout_seconds=settings.tavily_timeout_seconds,
+            ),
+            get_youtube_provider(settings),
+        )
 
     return FakeSearchProvider()
 
 
 def get_youtube_provider(settings: Settings = Depends(get_settings)) -> SearchProvider:
-    """Select the configured YouTubeMediaProvider."""
+    """Select the configured YouTubeMediaProvider (key pool rotates on 403/429)."""
     from app.providers.search.youtube import YouTubeMediaProvider
 
     return YouTubeMediaProvider(
-        api_key=settings.youtube_api_key, timeout_seconds=settings.youtube_timeout_seconds
+        api_key=settings.youtube_api_key_pool(),
+        timeout_seconds=settings.youtube_timeout_seconds,
     )
 
 

@@ -78,7 +78,9 @@ def test_tavily_handles_non_dict_response() -> None:
         provider = TavilySearchProvider(api_key="tvly-test-key")
         docs = provider.search("non dict test")
 
-        assert docs == []
+        # Never raise / never empty — curated web cards keep the feed alive.
+        assert len(docs) >= 1
+        assert all(d.source == "curated_web_fallback" for d in docs)
 
 
 def test_get_search_provider_di_tavily() -> None:
