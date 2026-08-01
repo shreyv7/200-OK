@@ -16,15 +16,36 @@ def build_next_step_query(bottleneck: str) -> str:
     return f"smallest next step for {bottleneck} bottleneck personal growth"
 
 
+def score_developmental_fit(document: Any, bottleneck: str) -> float:
+    """Score candidate documents for developmental fit based on bottleneck relevance and badge quality."""
+    score = 0.0
+    badge = document_source_to_badge(getattr(document, "source", "curated_fallback"))
+    if badge == "Live web":
+        score += 0.5
+    elif badge == "Cached web":
+        score += 0.4
+    else:
+        score += 0.1
+
+    text = f"{getattr(document, 'title', '')} {getattr(document, 'extract', '')}".lower()
+    if bottleneck.lower() in text:
+        score += 0.3
+    if any(k in text for k in ["guide", "strategy", "habit", "step", "focus", "action"]):
+        score += 0.2
+
+    return score
+
+
 def _document_to_candidate(document: Any, index: int) -> dict[str, Any]:
-    badge = document_source_to_badge(document.source)
+    badge = document_source_to_badge(getattr(document, "source", "curated_fallback"))
     return {
         "id": f"cand-media-{index}",
         "type": "media",
-        "title": document.title,
-        "url": document.url,
+        "title": getattr(document, "title", "Growth resource"),
+        "url": getattr(document, "url", None),
         "sourceBadge": badge,
-        "extract": document.extract,
+        "extract": getattr(document, "extract", ""),
+        "metadata": getattr(document, "metadata", {}),
     }
 
 
@@ -33,11 +54,11 @@ def retrieve_knowledge_candidates(
     *,
     search: Any | None = None,
 ) -> list[dict[str, Any]]:
-    """Call SearchProvider; never return an empty candidate list."""
+    """Call SearchProvider, rank by developmental fit; never return empty."""
     provider = search or get_curation_search()
     query = build_next_step_query(bottleneck)
     try:
-        documents = provider.search(query, {"limit": 3})
+        documents = provider.search(query, {"limit": 5})
     except Exception as exc:  # noqa: BLE001 — retrieval failure must not block curation
         logger.warning("Knowledge retrieval failed for %s: %s", bottleneck, exc)
         documents = []
@@ -45,7 +66,10 @@ def retrieve_knowledge_candidates(
     if not documents:
         return [get_fallback_knowledge(bottleneck)]
 
-    return [_document_to_candidate(doc, index) for index, doc in enumerate(documents)]
+    ranked_docs = sorted(
+        documents, key=lambda d: score_developmental_fit(d, bottleneck), reverse=True
+    )
+    return [_document_to_candidate(doc, index) for index, doc in enumerate(ranked_docs[:3])]
 
 
 def knowledge_node(state: dict[str, Any]) -> dict[str, Any]:

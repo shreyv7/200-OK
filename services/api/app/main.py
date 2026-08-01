@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.agents import router as agents_router
 from app.api.calendar import router as calendar_router
@@ -22,11 +23,21 @@ from app.api.partners import router as partners_router
 from app.api.stack import router as stack_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging
+from app.core.telemetry import TraceContextMiddleware
 from app.services.identity.wiring import register as register_identity_wiring
 
 configure_logging()
 
 app = FastAPI(title="Trellis API", version="0.1.0")
+
+app.add_middleware(TraceContextMiddleware)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(health_router)  # unprefixed convenience for liveness probes

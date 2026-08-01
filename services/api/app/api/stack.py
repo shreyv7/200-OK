@@ -12,6 +12,7 @@ from app.providers.search.base import SearchProvider
 from app.repositories import intervention_repository
 from app.schemas.stack import IdentityStack, InterventionVariant
 from app.services.curation import stack_orchestration
+from app.services.rate_limiter import check_rate_limit
 
 router = APIRouter(tags=["stack"])
 
@@ -35,6 +36,7 @@ def refresh_stack(
     llm_provider: LLMProvider = Depends(get_llm_provider),
 ) -> dict[str, str]:
     """Kicks off a Tier-2 curation cycle (never blocks — F4 feed-morph requirement)."""
+    check_rate_limit("stack_refresh", user_id, limit=5, window_seconds=10)
     background_tasks.add_task(_run_refresh, user_id, search_provider, llm_provider)
     return {"status": "refreshing"}
 
@@ -43,13 +45,23 @@ def refresh_stack(
 def get_active_stack(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
+    search_provider: SearchProvider = Depends(get_search_provider),
+    llm_provider: LLMProvider = Depends(get_llm_provider),
 ) -> IdentityStack:
     row = intervention_repository.get_active(db, user_id)
     if row is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No active stack yet — call POST /stack/refresh first.",
-        )
+        stack = stack_orchestration.refresh_stack(db, user_id, search_provider, llm_provider)
+        if stack is None:
+            from app.workers.seed import _upsert_confirmed_twin
+
+            _upsert_confirmed_twin(db, user_id)
+            stack = stack_orchestration.refresh_stack(db, user_id, search_provider, llm_provider)
+        if stack is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No active stack yet — call POST /stack/refresh first.",
+            )
+        return stack
     return intervention_repository.to_stack(row)
 
 

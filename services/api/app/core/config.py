@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     # fake so tests/local dev never require a live Tavily key.
     search_provider: Literal["fake", "tavily"] = "fake"
     tavily_api_key: str | None = None
+    tavily_timeout_seconds: float = 1.5
+
+    # YouTube Data API (work.md C2).
+    youtube_api_key: str | None = None
+    youtube_timeout_seconds: float = 2.0
+
     # Token encryption key for OAuth credentials (Fernet symmetric key)
     token_encryption_key: str | None = None
 

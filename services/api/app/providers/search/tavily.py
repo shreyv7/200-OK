@@ -22,14 +22,26 @@ class TavilySearchProvider(SearchProvider):
 
     def search(self, query: str, opts: dict[str, Any] | None = None) -> list[Document]:
         response = self._client.search(query, timeout=self._timeout_seconds, **(opts or {}))
+        if not isinstance(response, dict):
+            return []
         results = response.get("results", [])
-        return [
-            Document(
-                title=r.get("title", ""),
-                url=r.get("url", ""),
-                extract=r.get("content", ""),
-                source="tavily",
-            )
-            for r in results
-            if r.get("title") and r.get("url") and r.get("content")
-        ]
+        if not isinstance(results, list):
+            return []
+
+        documents: list[Document] = []
+        for r in results:
+            if not isinstance(r, dict):
+                continue
+            title = r.get("title")
+            url = r.get("url")
+            content = r.get("content")
+            if title and url and content:
+                documents.append(
+                    Document(
+                        title=str(title),
+                        url=str(url),
+                        extract=str(content),
+                        source="tavily_live",
+                    )
+                )
+        return documents

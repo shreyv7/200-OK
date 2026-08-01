@@ -11,6 +11,7 @@ from app.core.di import get_current_user_id, get_db
 from app.repositories import evidence_repository
 from app.schemas.evidence import EvidenceEvent, EvidenceIngestBody, EvidenceIngestRequest
 from app.services.evidence import service as evidence_service
+from app.services.rate_limiter import check_rate_limit
 
 router = APIRouter(tags=["evidence"])
 
@@ -22,6 +23,7 @@ def create_evidence(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ) -> EvidenceEvent:
+    check_rate_limit("evidence", user_id, limit=10, window_seconds=10)
     # userId is never accepted from the client — always the authenticated caller (A3).
     request = EvidenceIngestRequest(userId=user_id, **body.model_dump())
     row, created = evidence_service.ingest(db, request)

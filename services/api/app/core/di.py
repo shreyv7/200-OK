@@ -53,11 +53,21 @@ def get_search_provider(settings: Settings = Depends(get_settings)) -> SearchPro
     return FakeSearchProvider()
 
 
+def get_youtube_provider(settings: Settings = Depends(get_settings)) -> SearchProvider:
+    """Select the configured YouTubeMediaProvider."""
+    from app.providers.search.youtube import YouTubeMediaProvider
+
+    return YouTubeMediaProvider(
+        api_key=settings.youtube_api_key, timeout_seconds=settings.youtube_timeout_seconds
+    )
+
+
 __all__ = [
     "get_db",
     "get_current_user_id",
     "get_llm_provider",
     "get_search_provider",
+    "get_youtube_provider",
     "Depends",
     "Session",
 ]
