@@ -49,6 +49,19 @@ from app.services.identity.catalog_features import (
 from app.services.identity.recompute import (
     recompute_user_gap,
 )
+from app.services.identity.weekly_report import (
+    generate_weekly_report,
+)
+from app.services.identity.evolution_agent import (
+    propose_identity_evolution,
+)
+from app.schemas.report import (
+    WeeklyReport,
+)
+from app.schemas.evolution import (
+    IdentityEvolutionProposal,
+    ProposedChange,
+)
 from app.services.identity.confirmation import (
     InterviewTurn,
     InterviewState,
@@ -85,6 +98,11 @@ __all__ = [
     "get_stage_from_gap",
     "trigger_identity_embedding",
     "recompute_user_gap",
+    "generate_weekly_report",
+    "propose_identity_evolution",
+    "WeeklyReport",
+    "IdentityEvolutionProposal",
+    "ProposedChange",
     "InterviewTurn",
     "InterviewState",
     "ConfirmationPayload",

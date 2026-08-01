@@ -8,6 +8,7 @@ from app.schemas.catalog import GrowthStorySchema, MentorSchema, ToolSchema
 from app.schemas.dashboard import DashboardSummary
 from app.schemas.decision import DecisionPacket
 from app.schemas.evidence import EvidenceEvent, EvidenceIngestRequest, RawMCPPayload
+from app.schemas.evolution import IdentityEvolutionProposal, ProposedChange
 from app.schemas.gap import AttributeContribution, GapBreakdown
 from app.schemas.identity import DeclaredSelf, IdentityAttribute, IdentityMarker
 from app.schemas.ledger import LedgerEntry
@@ -17,6 +18,7 @@ from app.schemas.onboarding import (
     OnboardingTurnRequest,
     OnboardingTurnResponse,
 )
+from app.schemas.report import WeeklyReport
 from app.schemas.stack import IdentityStack, InterventionVariant, StackElement, StackExplanation
 
 __all__ = [
@@ -29,6 +31,8 @@ __all__ = [
     "EvidenceEvent",
     "EvidenceIngestRequest",
     "RawMCPPayload",
+    "IdentityEvolutionProposal",
+    "ProposedChange",
     "AttributeContribution",
     "GapBreakdown",
     "DeclaredSelf",
@@ -40,6 +44,7 @@ __all__ = [
     "IdentityPatchRequest",
     "OnboardingTurnRequest",
     "OnboardingTurnResponse",
+    "WeeklyReport",
     "IdentityStack",
     "InterventionVariant",
     "StackElement",
