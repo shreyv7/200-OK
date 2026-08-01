@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "motion/react";
-import { FileText, LayoutDashboard, Rss, ScrollText } from "lucide-react";
+import { FileText, LayoutDashboard, Rss, ScrollText, Settings } from "lucide-react";
 import { LatticeMark } from "./Lattice";
 import { LivingTrellisBackground } from "./LivingTrellisBackground";
 import { CapacitySlider } from "./CapacitySlider";
@@ -14,14 +14,17 @@ const nav = [
   { to: "/feed", label: "Growth Feed", icon: Rss },
   { to: "/ledger", label: "Trust Ledger", icon: ScrollText },
   { to: "/report", label: "Weekly Report", icon: FileText },
+  { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
 export function AppShell({ title, children }: { title: string; children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { unlearning, clearUnlearning, calendarPing } = useTrellis();
   const [simOpen, setSimOpen] = useState(false);
+  const isDev = import.meta.env.DEV;
 
   useEffect(() => {
+    if (!isDev) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.shiftKey && (e.key === "D" || e.key === "d")) {
         const t = e.target as HTMLElement | null;
@@ -32,7 +35,8 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [isDev]);
+
 
   useEffect(() => {
     if (!unlearning) return;
@@ -179,7 +183,8 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
         })}
       </nav>
 
-      <SimulatorDrawer open={simOpen} onOpenChange={setSimOpen} />
+      {isDev && <SimulatorDrawer open={simOpen} onOpenChange={setSimOpen} />}
     </div>
   );
 }
+
