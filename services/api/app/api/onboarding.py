@@ -1,0 +1,28 @@
+"""Mirror Interview onboarding endpoint. Owner: Backend. F1 (prd.md), milestones.md M3."""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from app.core.di import get_current_user_id, get_db, get_llm_provider
+from app.providers.llm.base import LLMProvider
+from app.schemas.onboarding import OnboardingTurnRequest, OnboardingTurnResponse
+from app.services.identity import onboarding_orchestration
+
+router = APIRouter(tags=["onboarding"])
+
+
+@router.post("/identity/onboarding", response_model=OnboardingTurnResponse)
+def onboarding_turn(
+    request: OnboardingTurnRequest,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+    llm_provider: LLMProvider = Depends(get_llm_provider),
+) -> OnboardingTurnResponse:
+    try:
+        return onboarding_orchestration.advance_turn(
+            db, llm_provider, user_id, request.sessionId, request.message
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc

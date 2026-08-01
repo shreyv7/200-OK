@@ -29,6 +29,9 @@ class RecomputeResult:
     gap: GapBreakdown
     bottleneck: BottleneckPacket | None
     snapshot: KPISnapshotModel
+    gap_delta: float
+    prior_gap_score: int | None
+    timestamp: str
 
 
 def _latest_snapshot(db: Session, user_id: str) -> KPISnapshotModel | None:
@@ -117,4 +120,11 @@ def recompute_and_persist(db: Session, user_id: str) -> RecomputeResult | None:
     db.commit()
     db.refresh(snapshot)
 
-    return RecomputeResult(gap=gap_breakdown, bottleneck=bottleneck_packet, snapshot=snapshot)
+    return RecomputeResult(
+        gap=gap_breakdown,
+        bottleneck=bottleneck_packet,
+        snapshot=snapshot,
+        gap_delta=float(decision_packet.gap_delta),
+        prior_gap_score=prior_gap_score,
+        timestamp=decision_packet.timestamp,
+    )
