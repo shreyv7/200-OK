@@ -195,29 +195,33 @@ function MentorsPage() {
             </p>
           </div>
 
-          {/* Subtle Mentor Unlock Progress Bar */}
-          <div className="shrink-0 rounded-3xl border border-border bg-card p-5 shadow-sm space-y-2 min-w-[280px]">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-foreground flex items-center gap-1.5">
-                <Award className="h-3.5 w-3.5 text-signal" />
-                Mentor Status
+          {/* Architectural Mentor Verification Status */}
+          <div className="shrink-0 rounded-2xl border border-border/60 bg-card/50 p-4 backdrop-blur-xl shadow-sm space-y-2.5 min-w-[280px]">
+            <div className="flex items-center justify-between text-xs font-mono">
+              <span className="font-medium text-foreground flex items-center gap-1.5">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-signal opacity-40" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-signal" />
+                </span>
+                Mentor Verification
               </span>
-              <span className="text-signal font-bold">78% Unlocked</span>
+              <span className="text-signal font-semibold text-[11px]">78% Verified</span>
             </div>
 
-            <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
+            <div className="h-1 w-full rounded-full bg-secondary overflow-hidden">
               <div className="h-full rounded-full bg-signal w-[78%] transition-all duration-500" />
             </div>
 
-            <div className="flex items-center justify-between pt-1">
-              <span className="text-[10px] text-muted-foreground">
-                21-day evidence streak active
+            <div className="flex items-center justify-between pt-0.5">
+              <span className="text-[10px] text-muted-foreground font-mono">
+                21-day streak active
               </span>
               <button
                 onClick={() => setModalOpen(true)}
-                className="text-[10px] text-signal font-semibold underline underline-offset-2 hover:text-foreground transition-colors"
+                className="text-[11px] text-foreground font-medium hover:text-signal transition-colors flex items-center gap-1"
               >
-                Share Growth Story
+                <span>Share Growth Story</span>
+                <ArrowUpRight className="h-3 w-3 opacity-60" />
               </button>
             </div>
           </div>

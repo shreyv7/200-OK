@@ -84,30 +84,32 @@ function Dashboard() {
           </button>
         </header>
 
-        {/* Subtle Mentor Unlock Progress Strip */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-border/80 bg-card/80 px-5 py-3.5 font-mono text-xs shadow-sm">
+        {/* Ultra-Premium Mentor Eligibility Strip */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-border/60 bg-card/50 px-5 py-3 font-mono text-[11px] backdrop-blur-xl transition-all hover:border-border">
           <div className="flex items-center gap-3">
-            <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-signal/15 text-signal font-bold">
-              🎓
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-signal opacity-40" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-signal" />
             </span>
-            <div>
-              <span className="font-semibold text-foreground">Mentor Readiness Progress: </span>
-              <span className="text-signal font-bold">78% Unlocked</span>
-              <span className="text-muted-foreground ml-2 hidden sm:inline">
-                (Maintain 80%+ alignment for 7 more days to unlock Mentor status)
-              </span>
-            </div>
+            <span className="text-muted-foreground uppercase tracking-widest text-[10px]">
+              Mentor Eligibility
+            </span>
+            <span className="text-border">|</span>
+            <span className="text-foreground font-medium">
+              78% Evidence Threshold Verified
+            </span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="h-2 w-28 rounded-full bg-secondary overflow-hidden">
+          <div className="flex items-center gap-4">
+            <div className="h-1 w-24 rounded-full bg-secondary overflow-hidden">
               <div className="h-full rounded-full bg-signal w-[78%]" />
             </div>
             <Link
               to="/mentors"
-              className="text-[11px] font-semibold text-signal hover:text-foreground underline underline-offset-2 transition-colors shrink-0"
+              className="inline-flex items-center gap-1 text-xs font-medium text-foreground hover:text-signal transition-colors shrink-0"
             >
-              Explore Guides &rarr;
+              <span>Explore Guides</span>
+              <ArrowUpRight className="h-3 w-3 opacity-60" />
             </Link>
           </div>
         </div>
