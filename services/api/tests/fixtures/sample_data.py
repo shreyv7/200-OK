@@ -2,67 +2,102 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from app.agents._contracts import (
-  BottleneckPacket,
-  DecisionPacket,
-  ElementType,
-  IdentityStack,
-  IdentityStackElement,
-  SourceBadge,
+from app.schemas import (
+    BottleneckPacket,
+    DecisionPacket,
+    EvidenceEvent,
+    IdentityStack,
+    StackElement,
+    StackExplanation,
 )
 
 
 def sample_decision_packet() -> DecisionPacket:
-  return DecisionPacket(
-      run_id="run-fixture-001",
-      user_id="user-aarav",
-      gap_score=68.0,
-      gap_delta=1.5,
-      invalidate_stack=True,
-      bottleneck=BottleneckPacket(
-          bottleneck="execution",
-          confidence=0.72,
-          supporting_evidence=["no publishes in 14 days", "high passive learning"],
-          missing_evidence=["public artifact"],
-          alternative_bottleneck="confidence",
-      ),
-      trigger="evidence.created",
-  )
+    return DecisionPacket(
+        userId="user-aarav",
+        gapDelta=1.5,
+        invalidateStack=True,
+        invalidatedElementIds=[],
+        bottleneck=BottleneckPacket(
+            bottleneck="execution",
+            confidence=0.72,
+            supporting_evidence=["no publishes in 14 days", "high passive learning"],
+            missing_evidence=["public artifact"],
+            alternative_bottleneck="confidence",
+        ),
+        rankingFeatures={},
+    )
 
 
-def sample_stack_element() -> IdentityStackElement:
-  return IdentityStackElement(
-      element_id="elem-1",
-      element_type=ElementType.MEDIA,
-      title="Fixture resource",
-      url="https://example.com/resource",
-      hypothesis_id="hyp-fixture-001",
-      source_badge=SourceBadge.CURATED_FALLBACK,
-      why_this="Fixture explanation for contract tests.",
-      why_now="Fixture timing context.",
-      how_reduces_gap="Fixture gap impact statement.",
-      simulated=True,
-  )
+def sample_stack_element() -> StackElement:
+    return StackElement(
+        id="elem-1",
+        type="media",
+        title="Fixture resource",
+        url="https://example.com/resource",
+        sourceBadge="Curated fallback",
+        explanation=StackExplanation(
+            whyThis="Fixture explanation for contract tests.",
+            whyNow="Fixture timing context.",
+            howReducesGap="Fixture gap impact statement.",
+        ),
+    )
 
 
 def sample_identity_stack() -> IdentityStack:
-  element = sample_stack_element()
-  return IdentityStack(
-      stack_id="stack-fixture-001",
-      hypothesis_id="hyp-fixture-001",
-      curated_at=datetime.now(timezone.utc),
-      elements=[element],
-      simulated=True,
-  )
+    element = sample_stack_element()
+    return IdentityStack(
+        id="stack-fixture-001",
+        userId="user-aarav",
+        hypothesisId="hyp-fixture-001",
+        bottleneck="execution",
+        elements=[element],
+        curatedAt=datetime.now(timezone.utc),
+    )
+
+
+def sample_evidence_event() -> EvidenceEvent:
+    return EvidenceEvent(
+        id="ev-fixture-001",
+        userId="user-aarav",
+        timestamp=datetime.now(timezone.utc),
+        source="trellis",
+        type="mission_completed",
+        category="creation",
+        identityAttributeIds=["attr-public-speaker"],
+        value=1.0,
+        baseWeight=3.0,
+        metadata={},
+        simulated=True,
+    )
 
 
 def sample_coordinator_state() -> dict:
-  packet = sample_decision_packet()
-  return {
-      "trigger": packet.trigger,
-      "run_id": packet.run_id,
-      "user_id": packet.user_id,
-      "decision_packet": packet.model_dump(),
-      "stack_draft": None,
-      "visited": [],
-  }
+    packet = sample_decision_packet()
+    return {
+        "trigger": "manual",
+        "run_id": "run-fixture-001",
+        "user_id": packet.userId,
+        "decision_packet": packet.model_dump(),
+        "stack_draft": None,
+        "visited": [],
+        "evidence_id": None,
+        "hypothesis_id": "hyp-fixture-001",
+    }
+
+
+def sample_gap_snapshot(*, gap_delta: float = 6.0, gap_score: int = 68) -> "GapSnapshot":
+    from app.services.recommendation.gap_snapshot import GapSnapshot
+
+    prior = int(gap_score - gap_delta)
+    return GapSnapshot(
+        userId="user-aarav",
+        gapScore=gap_score,
+        gapDelta=gap_delta,
+        alignment=100 - gap_score,
+        createConsumeRatio=0.42,
+        consistency=0.55,
+        momentum=-2.0,
+        timestamp="2026-08-01T00:00:00Z",
+        priorGapScore=prior,
+    )

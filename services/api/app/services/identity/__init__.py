@@ -1,12 +1,12 @@
 """Identity service package."""
 
 from app.services.identity.sanitizer import (
-    SanitizedEvent,
+    get_event_delta_days,
     validate_and_sanitize_event,
 )
 from app.services.identity.enrichment import (
     KEYWORD_ATTRIBUTE_MAP,
-    enrich_event,
+    enrich_evidence_event,
 )
 from app.services.identity.aggregates import (
     AttributeAggregate,
@@ -19,10 +19,10 @@ from app.services.identity.twin import (
 )
 
 __all__ = [
-    "SanitizedEvent",
+    "get_event_delta_days",
     "validate_and_sanitize_event",
     "KEYWORD_ATTRIBUTE_MAP",
-    "enrich_event",
+    "enrich_evidence_event",
     "AttributeAggregate",
     "RevealedSelfAggregates",
     "build_revealed_aggregates",
