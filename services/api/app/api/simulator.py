@@ -47,7 +47,7 @@ def inject(
                 sourceProvider="trellis",
                 rawPayload={
                     "userId": user_id,
-                    "type": "focus_drift",
+                    "type": "focus_drift_10min",
                     "timestamp": event_timestamp.isoformat(),
                     "units": 1.0,
                     "metadata": {"scenario": "doomscroll_burst", "chunk": i},
@@ -65,7 +65,7 @@ def inject(
             sourceProvider="trellis",
             rawPayload={
                 "userId": user_id,
-                "type": "passive_item_completed",
+                "type": "passive_item",
                 "timestamp": (now - timedelta(days=days)).isoformat(),
                 "units": 1.0,
                 "metadata": {"scenario": "time_advance", "days": days},
