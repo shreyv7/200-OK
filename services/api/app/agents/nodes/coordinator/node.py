@@ -17,7 +17,7 @@ def coordinator_node(state: dict[str, Any]) -> dict[str, Any]:
     invalidate = (
         bool(packet.get("invalidateStack"))
         or _fixture_invalidate_enabled()
-        or trigger == "onboarding.confirmed"
+        or trigger in {"onboarding.confirmed", "evolution.accepted"}
     )
     invalidated_element_ids = list(packet.get("invalidatedElementIds") or [])
     hypothesis_id = state.get("hypothesis_id") or f"hyp-{state.get('run_id', 'pending')}"

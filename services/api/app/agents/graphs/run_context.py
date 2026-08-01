@@ -5,7 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-TriggerType = Literal["evidence.created", "manual", "onboarding.confirmed"]
+TriggerType = Literal[
+    "evidence.created",
+    "manual",
+    "onboarding.confirmed",
+    "report.requested",
+    "evolution.requested",
+    "evolution.accepted",
+]
 
 
 @dataclass

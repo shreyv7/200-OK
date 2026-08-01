@@ -9,6 +9,8 @@ from langgraph.graph import END, START, StateGraph
 
 from app.agents.nodes.registry import NODE_REGISTRY
 
+REPORT_EVOLUTION_TRIGGERS = frozenset({"report.requested", "evolution.requested"})
+
 
 class CoordinatorState(TypedDict):
     trigger: str
@@ -38,6 +40,8 @@ class CoordinatorState(TypedDict):
     include_p1_lenses: NotRequired[bool]
     stage: NotRequired[str]
     opportunity_candidates: NotRequired[list[dict[str, Any]]]
+    report_evolution_result: NotRequired[dict[str, Any] | None]
+    declared_self_version: NotRequired[int]
 
 
 GRAPH_NODE_ORDER = [
@@ -52,15 +56,32 @@ GRAPH_NODE_ORDER = [
 ]
 
 
+def _route_after_coordinator(state: CoordinatorState) -> str:
+    trigger = state.get("trigger", "")
+    if trigger in REPORT_EVOLUTION_TRIGGERS:
+        return "report_evolution"
+    return "curation"
+
+
 def build_coordinator_graph(checkpointer: MemorySaver | None = None):
     """Compile the Coordinator graph with registered nodes."""
     graph = StateGraph(CoordinatorState)
 
     for name in GRAPH_NODE_ORDER:
         graph.add_node(name, NODE_REGISTRY[name])
+    graph.add_node("report_evolution", NODE_REGISTRY["report_evolution"])
 
     graph.add_edge(START, "coordinator")
-    for current, nxt in zip(GRAPH_NODE_ORDER, GRAPH_NODE_ORDER[1:]):
+    graph.add_conditional_edges(
+        "coordinator",
+        _route_after_coordinator,
+        {
+            "report_evolution": "report_evolution",
+            "curation": "knowledge",
+        },
+    )
+    graph.add_edge("report_evolution", END)
+    for current, nxt in zip(GRAPH_NODE_ORDER[1:], GRAPH_NODE_ORDER[2:]):
         graph.add_edge(current, nxt)
     graph.add_edge("coach", END)
 
