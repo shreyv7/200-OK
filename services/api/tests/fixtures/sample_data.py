@@ -101,3 +101,18 @@ def sample_gap_snapshot(*, gap_delta: float = 6.0, gap_score: int = 68) -> "GapS
         timestamp="2026-08-01T00:00:00Z",
         priorGapScore=prior,
     )
+
+
+def sample_onboarding_confirm_event(
+    *,
+    with_gap_snapshot: bool = True,
+    twin_version: int = 1,
+) -> "OnboardingConfirmEvent":
+    from app.services.recommendation.onboarding_trigger import OnboardingConfirmEvent
+
+    return OnboardingConfirmEvent(
+        userId="user-aarav",
+        twinVersion=twin_version,
+        confirmedAt="2026-08-01T12:00:00Z",
+        gapSnapshot=sample_gap_snapshot() if with_gap_snapshot else None,
+    )
