@@ -11,6 +11,7 @@ from unittest.mock import patch
 import pytest
 from google.genai import errors
 
+from app.providers.llm.base import LLMProviderUnavailable
 from app.providers.llm.gemini import GeminiLLMProvider
 
 _SCHEMA = {"type": "object", "properties": {"ok": {"type": "boolean"}}}
@@ -91,19 +92,22 @@ def test_rotates_to_next_key_on_server_error() -> None:
 
 
 def test_all_keys_cooling_down_raises_last_error() -> None:
+    """Raises the provider-agnostic LLMProviderUnavailable (docs/work.md
+    B3), not a raw google.genai exception, so FailoverLLMProvider can
+    catch one generic type without importing google.genai.errors."""
     provider = GeminiLLMProvider(api_keys=["key-a", "key-b"], model="gemini-2.0-flash")
     clients = {
         "key-a": _fake_client([_client_error(429, "RESOURCE_EXHAUSTED")]),
         "key-b": _fake_client([_client_error(429, "RESOURCE_EXHAUSTED")]),
     }
     with patch("google.genai.Client", side_effect=lambda *, api_key: clients[api_key]):
-        with pytest.raises(errors.ClientError):
+        with pytest.raises(LLMProviderUnavailable):
             provider.generate_structured(schema=_SCHEMA, messages=_MESSAGES)
 
     # Second call: both keys are now in cooldown, no client should even be
     # constructed again -- proves it fails fast without wasting a real call.
     with patch("google.genai.Client", side_effect=AssertionError("should not build a client")):
-        with pytest.raises(RuntimeError, match="cooling down"):
+        with pytest.raises(LLMProviderUnavailable, match="cooling down"):
             provider.generate_structured(schema=_SCHEMA, messages=_MESSAGES)
 
 

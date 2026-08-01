@@ -35,6 +35,14 @@ Note: rotation only adds real headroom if each key belongs to a
 different Google Cloud project/billing account. Keys sharing one
 project share one quota; rotating among them just spreads the same
 zero-sum budget around faster.
+
+When the whole pool is exhausted, generate_structured() raises the
+provider-agnostic LLMProviderUnavailable (docs/work.md B3) instead of a
+raw google.genai exception, so FailoverLLMProvider can catch one generic
+type without importing google.genai.errors itself. A malformed-request
+error (e.g. a bad schema) is not pool exhaustion — it is re-raised as
+whatever google.genai raised, unwrapped, since it will fail identically
+on Bedrock too and failing over to it would only waste a call.
 """
 
 from __future__ import annotations
@@ -43,7 +51,7 @@ import json
 import time
 from typing import Any
 
-from app.providers.llm.base import LLMProvider
+from app.providers.llm.base import LLMProvider, LLMProviderUnavailable
 
 _RATE_LIMIT_COOLDOWN_SECONDS = 60.0
 _INVALID_KEY_COOLDOWN_SECONDS = 3600.0
@@ -138,5 +146,7 @@ class GeminiLLMProvider(LLMProvider):
                 return json.loads(response.text)
 
         if last_exc is not None:
-            raise last_exc
-        raise RuntimeError("All Gemini API keys are cooling down; no healthy key available")
+            raise LLMProviderUnavailable(
+                f"All Gemini keys in the pool are rate-limited or unavailable: {last_exc}"
+            ) from last_exc
+        raise LLMProviderUnavailable("All Gemini API keys are cooling down; no healthy key available")

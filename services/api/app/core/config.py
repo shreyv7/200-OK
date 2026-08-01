@@ -63,6 +63,12 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-2.0-flash"
     bedrock_region: str | None = None
     bedrock_model_id: str | None = None
+    # Off by default (docs/work.md B3 ground rule: "if we don't buy
+    # Bedrock yet, ship the failover code behind a flag"). When true AND
+    # bedrock_region/bedrock_model_id are both set, LLM_PROVIDER=gemini
+    # wraps the Gemini pool in FailoverLLMProvider so a fully-exhausted
+    # Gemini pool automatically retries on Bedrock instead of failing.
+    bedrock_failover_enabled: bool = False
 
     def gemini_api_key_pool(self) -> list[str]:
         """Ordered, de-duplicated key pool: gemini_api_key first (back-compat

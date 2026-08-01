@@ -27,7 +27,18 @@ def get_llm_provider(settings: Settings = Depends(get_settings)) -> LLMProvider:
             raise RuntimeError("LLM_PROVIDER=gemini requires GEMINI_API_KEY or GEMINI_API_KEYS to be set")
         from app.providers.llm.gemini import GeminiLLMProvider
 
-        return GeminiLLMProvider(api_keys=api_keys, model=settings.gemini_model)
+        gemini_provider = GeminiLLMProvider(api_keys=api_keys, model=settings.gemini_model)
+
+        if settings.bedrock_failover_enabled and settings.bedrock_region and settings.bedrock_model_id:
+            from app.providers.llm.bedrock import BedrockLLMProvider
+            from app.providers.llm.failover import FailoverLLMProvider
+
+            bedrock_provider = BedrockLLMProvider(
+                region=settings.bedrock_region, model_id=settings.bedrock_model_id
+            )
+            return FailoverLLMProvider(primary=gemini_provider, fallback=bedrock_provider)
+
+        return gemini_provider
 
     if settings.llm_provider == "bedrock":
         from app.providers.llm.bedrock import BedrockLLMProvider

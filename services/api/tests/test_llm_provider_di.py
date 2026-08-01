@@ -90,9 +90,66 @@ def test_gemini_config_accepts_nested_pydantic_schema() -> None:
     assert "$defs" in config.response_json_schema
 
 
-def test_bedrock_resolves_to_stub_provider() -> None:
-    settings = Settings(llm_provider="bedrock")
+def test_bedrock_without_config_raises_at_construction() -> None:
+    """B3 (docs/work.md): Bedrock is a real provider now, not an inert
+    stub -- missing region/model config fails fast at construction, not
+    silently on first call."""
+    settings = Settings(llm_provider="bedrock", bedrock_region=None, bedrock_model_id=None)
+    with pytest.raises(RuntimeError):
+        get_llm_provider(settings)
+
+
+def test_bedrock_with_config_resolves_real_provider() -> None:
+    settings = Settings(
+        llm_provider="bedrock", bedrock_region="us-east-1", bedrock_model_id="test-model"
+    )
     provider = get_llm_provider(settings)
     assert isinstance(provider, BedrockLLMProvider)
-    with pytest.raises(NotImplementedError):
-        provider.generate_structured(schema={}, messages=[])
+
+
+def test_gemini_without_bedrock_failover_flag_stays_plain_gemini() -> None:
+    """Off by default (docs/work.md B3 ground rule) -- even with Bedrock
+    fully configured, LLM_PROVIDER=gemini alone must not wrap in failover
+    unless BEDROCK_FAILOVER_ENABLED=true is also set."""
+    from app.providers.llm.gemini import GeminiLLMProvider
+
+    settings = Settings(
+        llm_provider="gemini",
+        gemini_api_key="key-a",
+        bedrock_failover_enabled=False,
+        bedrock_region="us-east-1",
+        bedrock_model_id="test-model",
+    )
+    provider = get_llm_provider(settings)
+    assert isinstance(provider, GeminiLLMProvider)
+
+
+def test_gemini_with_bedrock_failover_flag_wraps_in_failover_provider() -> None:
+    from app.providers.llm.failover import FailoverLLMProvider
+
+    settings = Settings(
+        llm_provider="gemini",
+        gemini_api_key="key-a",
+        bedrock_failover_enabled=True,
+        bedrock_region="us-east-1",
+        bedrock_model_id="test-model",
+    )
+    provider = get_llm_provider(settings)
+    assert isinstance(provider, FailoverLLMProvider)
+
+
+def test_gemini_with_bedrock_failover_flag_but_missing_bedrock_config_stays_plain_gemini() -> None:
+    """The flag alone isn't enough -- region/model_id must also be set,
+    otherwise BedrockLLMProvider's own construction would raise and take
+    the whole app down for a misconfigured opt-in feature."""
+    from app.providers.llm.gemini import GeminiLLMProvider
+
+    settings = Settings(
+        llm_provider="gemini",
+        gemini_api_key="key-a",
+        bedrock_failover_enabled=True,
+        bedrock_region=None,
+        bedrock_model_id=None,
+    )
+    provider = get_llm_provider(settings)
+    assert isinstance(provider, GeminiLLMProvider)
