@@ -18,8 +18,10 @@ from app.api.integrations import router as integrations_router
 from app.api.ledger import router as ledger_router
 from app.api.lattice import router as lattice_router
 from app.api.me import router as me_router
+from app.api.notion import router as notion_router
 from app.api.onboarding import router as onboarding_router
 from app.api.partners import router as partners_router
+from app.api.search import router as search_router
 from app.api.stack import router as stack_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging
@@ -49,6 +51,7 @@ app.include_router(dashboard_router, prefix="/api/v1")
 app.include_router(identity_router, prefix="/api/v1")
 app.include_router(integrations_router, prefix="/api/v1")
 app.include_router(github_router, prefix="/api/v1")
+app.include_router(notion_router, prefix="/api/v1")
 
 
 app.include_router(lattice_router, prefix="/api/v1")
@@ -60,6 +63,8 @@ app.include_router(catalog_router, prefix="/api/v1")
 app.include_router(agents_router, prefix="/api/v1")
 app.include_router(calendar_router, prefix="/api/v1")
 app.include_router(partners_router, prefix="/api/v1")
+app.include_router(search_router, prefix="/api/v1")
+
 
 register_identity_wiring()
 

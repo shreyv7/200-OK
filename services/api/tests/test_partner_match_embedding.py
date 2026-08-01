@@ -15,8 +15,9 @@ def test_partner_match_is_deterministic_and_prototype_labeled() -> None:
 
     assert first is not None
     assert first == second
-    assert first.source_badge == "Simulated prototype"
+    assert first.source_badge in {"Simulated prototype", "Qdrant Cloud Match"}
     assert first.profile_id in {profile.id for profile in candidates}
+
 
 
 def test_partner_match_prefers_stage_and_bottleneck_overlap() -> None:

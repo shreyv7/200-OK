@@ -17,6 +17,9 @@ EVENT_WEIGHTS: dict[str, float] = {
     "attended_experience": 4.0,
     "passive_item": 1.0,
     "focus_drift_10min": -2.0,
+    # Notion connector (PRD §9 — creation signals)
+    "notion_page_created": 3.0,  # Creating a new page = high-value creation
+    "notion_page_edited": 1.5,   # Editing an existing page = lighter creation signal
 }
 
 # Category classification sets
@@ -25,6 +28,8 @@ CREATION_TYPES: set[str] = {
     "github_commit",
     "published_artifact",
     "attended_experience",
+    "notion_page_created",
+    "notion_page_edited",
 }
 
 PASSIVE_TYPES: set[str] = {

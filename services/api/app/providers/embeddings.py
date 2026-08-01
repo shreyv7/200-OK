@@ -1,4 +1,4 @@
-"""EmbeddingProvider interface. Owner: Backend scaffolds; AIA/AIS fill usage patterns."""
+"""EmbeddingProvider interface and implementations."""
 
 from __future__ import annotations
 
@@ -40,3 +40,7 @@ class FakeEmbeddingProvider(EmbeddingProvider):
     def embed(self, texts: list[str]) -> list[list[float]]:
         self.calls.append(list(texts))
         return [_hash_vector(_tokenize(text), dims=self.dims) for text in texts]
+
+
+def get_embedding_provider(dims: int = 32) -> EmbeddingProvider:
+    return FakeEmbeddingProvider(dims=dims)

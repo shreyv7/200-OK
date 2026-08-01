@@ -268,7 +268,14 @@ def main() -> None:
         prepared = _ensure_prepared_intervention(session, user.id)
         dismissals = _ensure_demo_dismissal_history(session, user.id)
         stories, tools, mentors = seed_catalog(session)
+        try:
+            from app.api.search import reindex_vector_catalog
+            reindex_vector_catalog(db=session, _user_id=user.id)
+            logger.info("Qdrant vector catalog indexed successfully")
+        except Exception as exc:
+            logger.warning("Qdrant vector indexing skipped/failed: %s", exc)
         evolution_seeded = _ensure_demo_evolution_proposal(session, user.id)
+
         calendar_seeded = _ensure_demo_calendar_events(session, user.id)
         logger.info(
             "Seed complete: user=%s twin_version=%d inserted_events=%d "

@@ -1,12 +1,12 @@
-"""Growth Partner Match card — embedding similarity over fake profiles (P2) — AIS M8."""
+"""Growth Partner Match card — Qdrant vector similarity & profile matching."""
 
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
 
-from app.providers.embeddings import EmbeddingProvider
-from app.providers.embeddings import FakeEmbeddingProvider
+from app.providers.embeddings import EmbeddingProvider, FakeEmbeddingProvider
+from app.providers.qdrant import get_vector_store
 
 
 @dataclass(frozen=True)
@@ -25,7 +25,7 @@ class PartnerMatchCard:
     display_name: str
     similarity: float
     proposed_check_in: str
-    source_badge: str = "Simulated prototype"
+    source_badge: str = "Qdrant Vector Match"
     rationale: str = ""
 
 
@@ -55,12 +55,56 @@ def match_partner(
     *,
     embedder: EmbeddingProvider | None = None,
 ) -> PartnerMatchCard | None:
-    """Return the best stage/goal match — never popularity-based."""
+    """Return the best stage/goal match using Qdrant Vector Search with fallback."""
     if not candidates:
         return None
 
     provider = embedder or FakeEmbeddingProvider()
     user_vector = provider.embed([_user_text(user_profile)])[0]
+    vector_store = get_vector_store()
+
+    # Index candidates into Qdrant if vector store is available
+    if vector_store.is_enabled:
+        points = []
+        for p in candidates:
+            vec = provider.embed([_profile_text(p)])[0]
+            points.append(
+                {
+                    "id": p.id,
+                    "vector": vec,
+                    "payload": {
+                        "display_name": p.display_name,
+                        "stage": p.stage,
+                        "goal": p.goal,
+                        "bottleneck": p.bottleneck,
+                        "bio": p.bio,
+                    },
+                }
+            )
+        vector_store.upsert_points("partner_profiles", points, vector_size=len(user_vector))
+        
+        # Search Qdrant vector store
+        qdrant_results = vector_store.search("partner_profiles", query_vector=user_vector, limit=5)
+        if qdrant_results:
+            top = qdrant_results[0]
+            candidate_map = {p.id: p for p in candidates}
+            top_profile = candidate_map.get(top["id"]) or candidates[0]
+            score = top["score"]
+            if top_profile.stage == user_profile.get("stage"):
+                score = min(1.0, score + 0.05)
+            return PartnerMatchCard(
+                profile_id=top_profile.id,
+                display_name=top_profile.display_name,
+                similarity=round(score, 4),
+                proposed_check_in="Weekly 15-minute accountability check-in",
+                source_badge="Qdrant Cloud Match",
+                rationale=(
+                    f"Qdrant vector matched builder at your stage with a similar "
+                    f"{top_profile.bottleneck} bottleneck working toward {top_profile.goal}."
+                ),
+            )
+
+    # Fallback to local cosine similarity
     scored: list[tuple[PartnerProfile, float]] = []
     for profile in candidates:
         vector = provider.embed([_profile_text(profile)])[0]
@@ -78,6 +122,7 @@ def match_partner(
         display_name=best_profile.display_name,
         similarity=round(best_score, 4),
         proposed_check_in="Weekly 15-minute accountability check-in",
+        source_badge="Simulated prototype",
         rationale=(
             f"Someone at your stage with a similar {best_profile.bottleneck} bottleneck "
             f"working toward {best_profile.goal}."

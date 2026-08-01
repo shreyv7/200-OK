@@ -18,6 +18,7 @@ from app.core.oauth_state import generate_oauth_state, validate_oauth_state
 from app.integrations.oauth_exchange import (
     exchange_github_code,
     exchange_google_code,
+    exchange_notion_code,
     refresh_google_token,
 )
 from app.repositories.integration_repository import DecryptedConnection, IntegrationRepository
@@ -27,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 
-SUPPORTED_PROVIDERS = {"google-calendar", "github"}
+SUPPORTED_PROVIDERS = {"google-calendar", "github", "notion"}
 
 
 def _validate_provider(provider: str) -> None:
@@ -173,6 +174,22 @@ def connect_integration(
             "state": state,
         }
         auth_url = f"https://github.com/login/oauth/authorize?{urlencode(params)}"
+    elif provider == "notion":
+        client_id = settings.notion_oauth_client_id
+        if not client_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="NOTION_OAUTH_CLIENT_ID is not configured in .env",
+            )
+        redirect_uri = settings.notion_oauth_redirect_uri
+        params = {
+            "client_id": client_id,
+            "redirect_uri": redirect_uri,
+            "response_type": "code",
+            "owner": "user",
+            "state": state,
+        }
+        auth_url = f"https://api.notion.com/v1/oauth/authorize?{urlencode(params)}"
     else:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Unsupported provider")
 
@@ -218,6 +235,21 @@ def oauth_callback(
             )
         redirect_uri = settings.github_oauth_redirect_uri
         tokens = exchange_github_code(
+            code=code,
+            redirect_uri=redirect_uri,
+            client_id=client_id,
+            client_secret=client_secret,
+        )
+    elif provider == "notion":
+        client_id = settings.notion_oauth_client_id
+        client_secret = settings.notion_oauth_client_secret
+        if not client_id or not client_secret:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="NOTION_OAUTH_CLIENT_ID or NOTION_OAUTH_CLIENT_SECRET not configured in .env",
+            )
+        redirect_uri = settings.notion_oauth_redirect_uri
+        tokens = exchange_notion_code(
             code=code,
             redirect_uri=redirect_uri,
             client_id=client_id,
