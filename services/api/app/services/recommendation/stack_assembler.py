@@ -11,8 +11,17 @@ from app.providers.search.base import SearchProvider
 from app.services.recommendation.curation_context import get_curation_llm, get_curation_search
 from app.services.recommendation.badge_mapping import document_source_to_badge
 from app.services.recommendation.explanations import build_explanation
+from app.services.recommendation.catalog import CatalogSource
+from app.services.recommendation.catalog_ranking import (
+    catalog_item_to_candidate,
+    rank_catalog_items,
+    select_catalog_element,
+)
 from app.services.recommendation.fallback_catalog import get_fallback_knowledge, get_fallback_mission
 from app.services.recommendation.replacement import apply_replacement_policy
+from app.services.recommendation.stage_feature import stage_from_ranking_features
+
+MAX_STACK_ELEMENTS = 4
 
 
 def build_providers(
@@ -72,8 +81,45 @@ def _candidate_to_element(
             source_badge=source_badge,
             small_experiment=small_experiment and element_type == "micro_mission",
             capacity_tier=capacity_tier,
+            tags=candidate.get("tags"),
         ),
     )
+
+
+def resolve_stage(decision_packet: DecisionPacket) -> str:
+    return stage_from_ranking_features(decision_packet.rankingFeatures)
+
+
+def _select_justified_catalog_candidate(
+    *,
+    catalog_source: CatalogSource | None,
+    bottleneck: str,
+    stage: str,
+) -> dict[str, Any] | None:
+    if catalog_source is None:
+        return None
+    items = [
+        item
+        for item in catalog_source.fetch(bottleneck=bottleneck, stage=stage)
+        if item.type in {"growth_story", "tool", "mentor"}
+    ]
+    ranked = rank_catalog_items(items, bottleneck=bottleneck, stage=stage)
+    selected = select_catalog_element(ranked)
+    if selected is None:
+        return None
+    return catalog_item_to_candidate(selected)
+
+
+def _select_justified_opportunity_candidate(
+    candidates: list[dict[str, Any]],
+    *,
+    bottleneck: str,
+) -> dict[str, Any] | None:
+    for candidate in candidates:
+        tags = candidate.get("tags") or {}
+        if tags.get("bottleneck") == bottleneck:
+            return candidate
+    return None
 
 
 def assemble_identity_stack(
@@ -85,6 +131,10 @@ def assemble_identity_stack(
     capacity_tier: str = "full",
     run_id: str | None = None,
     small_experiment: bool = False,
+    catalog_source: CatalogSource | None = None,
+    stage: str | None = None,
+    opportunity_candidates: list[dict[str, Any]] | None = None,
+    include_p1_lenses: bool = False,
 ) -> IdentityStack:
     """Assemble the smallest coherent stack (≥1 action + ≥1 resource). Never empty."""
     bottleneck = (
@@ -128,6 +178,40 @@ def assemble_identity_stack(
         ),
     ]
 
+    effective_stage = stage or resolve_stage(decision_packet)
+    catalog_candidate = _select_justified_catalog_candidate(
+        catalog_source=catalog_source,
+        bottleneck=bottleneck,
+        stage=effective_stage,
+    )
+    if catalog_candidate is not None and len(elements) < MAX_STACK_ELEMENTS:
+        elements.append(
+            _candidate_to_element(
+                catalog_candidate,
+                bottleneck=bottleneck,
+                small_experiment=small_experiment,
+                capacity_tier=capacity_tier,
+            )
+        )
+
+    opportunity_candidate = None
+    if include_p1_lenses:
+        opportunity_candidate = _select_justified_opportunity_candidate(
+            opportunity_candidates or [],
+            bottleneck=bottleneck,
+        )
+    if opportunity_candidate is not None and len(elements) < MAX_STACK_ELEMENTS:
+        elements.append(
+            _candidate_to_element(
+                opportunity_candidate,
+                bottleneck=bottleneck,
+                small_experiment=small_experiment,
+                capacity_tier=capacity_tier,
+            )
+        )
+
+    elements = elements[:MAX_STACK_ELEMENTS]
+
     stack_key = run_id or decision_packet.userId
     hypothesis_id = f"hyp-{stack_key}"
     now = datetime.now(timezone.utc)
@@ -155,6 +239,10 @@ def assemble_stack(
     knowledge_candidates: list[dict[str, Any]] | None = None,
     planner_candidates: list[dict[str, Any]] | None = None,
     small_experiment: bool = False,
+    catalog_source: CatalogSource | None = None,
+    stage: str | None = None,
+    opportunity_candidates: list[dict[str, Any]] | None = None,
+    include_p1_lenses: bool = False,
 ) -> IdentityStack:
     """Public assembler entry — used by graph assemble node and warm-cache seam."""
     _llm, _search = build_providers(llm, search)
@@ -179,4 +267,8 @@ def assemble_stack(
         capacity_tier=capacity_tier,
         run_id=run_id,
         small_experiment=small_experiment,
+        catalog_source=catalog_source,
+        stage=stage,
+        opportunity_candidates=opportunity_candidates,
+        include_p1_lenses=include_p1_lenses,
     )

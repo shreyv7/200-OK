@@ -34,6 +34,10 @@ class CoordinatorState(TypedDict):
     recent_dismissal_rate: NotRequired[float]
     llm_provider: NotRequired[Any]
     search_provider: NotRequired[Any]
+    catalog_source: NotRequired[Any]
+    include_p1_lenses: NotRequired[bool]
+    stage: NotRequired[str]
+    opportunity_candidates: NotRequired[list[dict[str, Any]]]
 
 
 GRAPH_NODE_ORDER = [

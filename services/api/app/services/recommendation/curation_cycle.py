@@ -11,7 +11,9 @@ from app.providers.llm.base import LLMProvider
 from app.providers.search.base import SearchProvider
 from app.schemas import DecisionPacket, IdentityStack, InterventionVariant
 from app.services.recommendation.curation_context import curation_providers
+from app.services.recommendation.catalog import CatalogSource
 from app.services.recommendation.guardian import GuardianContext
+from app.services.recommendation.stack_assembler import resolve_stage
 from app.services.recommendation.stack_state import get_active_stack, set_active_stack
 from app.services.recommendation.variants import generate_variants, select_variant_by_capacity
 
@@ -33,6 +35,9 @@ def _build_initial_state(
     search_provider: SearchProvider | None = None,
     llm_provider: LLMProvider | None = None,
     guardian_context: GuardianContext | None = None,
+    catalog_source: CatalogSource | None = None,
+    include_p1_lenses: bool = False,
+    stage: str | None = None,
 ) -> dict[str, Any]:
     state: dict[str, Any] = {
         "trigger": trigger,
@@ -55,6 +60,11 @@ def _build_initial_state(
         state["interventions_today"] = guardian_context.interventions_today
         state["last_intervention_at"] = guardian_context.last_intervention_at
         state["recent_dismissal_rate"] = guardian_context.recent_dismissal_rate
+    if catalog_source is not None:
+        state["catalog_source"] = catalog_source
+    if include_p1_lenses:
+        state["include_p1_lenses"] = True
+        state["stage"] = stage or resolve_stage(decision_packet)
     return state
 
 
@@ -69,6 +79,9 @@ def run_curation_cycle(
     persist_active_stack: bool = True,
     guardian_context: GuardianContext | None = None,
     with_variants: bool = False,
+    catalog_source: CatalogSource | None = None,
+    include_p1_lenses: bool = False,
+    stage: str | None = None,
 ) -> IdentityStack | CurationCycleResult:
     """Decision → diagnose → retrieve → assemble → guardian; never empty stack."""
     effective_run_id = run_id or f"curation-{decision_packet.userId}"
@@ -83,6 +96,9 @@ def run_curation_cycle(
         search_provider=search,
         llm_provider=llm,
         guardian_context=guardian_context,
+        catalog_source=catalog_source,
+        include_p1_lenses=include_p1_lenses,
+        stage=stage,
     )
 
     graph = build_coordinator_graph()

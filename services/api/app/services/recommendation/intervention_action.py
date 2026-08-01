@@ -1,4 +1,4 @@
-"""Public intervention-action seam for Backend dismiss/complete paths — AIS M5."""
+"""Public intervention-action seam for Backend dismiss/complete paths — AIS M5/M6."""
 
 from __future__ import annotations
 
@@ -10,7 +10,8 @@ from app.schemas import IdentityStack, LedgerEntry
 from app.schemas.ledger import LedgerAction
 from app.services.recommendation.alternate_lens import request_alternate_stack
 from app.services.recommendation.lens_weights import apply_unlearning, get_lens_weights, set_lens_weights
-from app.services.recommendation.ledger_intake import evaluate_family_verdict, record_action
+from app.services.recommendation.ledger_intake import record_action
+from app.services.recommendation.outcome_window import evaluate_intervention_verdict
 from app.services.recommendation.stack_state import get_active_stack, set_active_stack
 
 
@@ -34,7 +35,7 @@ def on_intervention_action(
     when = timestamp or datetime.now(timezone.utc)
     record_action(user_id, hypothesis_family, action, timestamp=when)
 
-    verdict = evaluate_family_verdict(user_id, hypothesis_family, now=when)
+    verdict = evaluate_intervention_verdict(user_id, hypothesis_family, action, now=when)
     weights = get_lens_weights(user_id)
     adjustment = None
     note = None
@@ -51,6 +52,10 @@ def on_intervention_action(
             hypothesis_id=hypothesis_id,
         )
         set_active_stack(user_id, alternate_stack)
+    elif verdict.verdict == "worked":
+        note = "Hypothesis worked based on completion evidence in the outcome window."
+    elif action == "delivered":
+        note = "Outcome window open; verdict pending."
 
     entry = LedgerEntry(
         id=f"ledger-{uuid4().hex[:12]}",
