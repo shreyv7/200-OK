@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
+from app.api.agents import router as agents_router
 from app.api.capacity import router as capacity_router
 from app.api.catalog import router as catalog_router
 from app.api.dashboard import router as dashboard_router
@@ -30,6 +31,7 @@ app.include_router(stack_router, prefix="/api/v1")
 app.include_router(capacity_router, prefix="/api/v1")
 app.include_router(ledger_router, prefix="/api/v1")
 app.include_router(catalog_router, prefix="/api/v1")
+app.include_router(agents_router, prefix="/api/v1")
 
 register_identity_wiring()
 

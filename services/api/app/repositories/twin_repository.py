@@ -96,6 +96,26 @@ def upsert_draft(
     )
 
 
+def create_confirmed_version(
+    db: Session, user_id: str, attributes: list[IdentityAttribute]
+) -> DeclaredSelf:
+    """Creates and immediately confirms the next version — used by Identity
+    Evolution accept (milestones.md M7), which skips the draft/PATCH
+    lifecycle entirely (the LLM's proposal already went through review)."""
+    next_version = db.scalar(
+        select(TwinVersion.version)
+        .where(TwinVersion.user_id == user_id)
+        .order_by(TwinVersion.version.desc())
+    )
+    return create_version(
+        db,
+        user_id=user_id,
+        version=(next_version or 0) + 1,
+        attributes=attributes,
+        confirmed_at=datetime.utcnow(),
+    )
+
+
 class WeightSumError(ValueError):
     """Raised when a draft's attribute weights don't sum to 1.0 on confirm."""
 

@@ -6,8 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.di import get_current_user_id, get_db
-from app.repositories import twin_repository
+from app.repositories import evolution_repository, twin_repository
 from app.repositories.twin_repository import WeightSumError
+from app.schemas.agent_run import IdentityEvolutionProposal
 from app.schemas.identity import DeclaredSelf
 from app.schemas.onboarding import IdentityPatchRequest
 
@@ -48,3 +49,40 @@ def patch_identity(
         return twin_repository.confirm_draft(db, user_id)
     except WeightSumError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+
+@router.post("/identity/evolution/{proposal_id}/accept", response_model=DeclaredSelf)
+def accept_evolution(
+    proposal_id: str,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+) -> DeclaredSelf:
+    """Accept -> versioned Twin vN; Gap uses the new version from here on
+    (milestones.md M7 merge gate 2). Never applied silently — this is the
+    only path that mutates the Declared Self from a proposal."""
+    found = evolution_repository.get(db, proposal_id)
+    if found is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown proposal")
+    row, proposal = found
+    if proposal.status != "pending":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Proposal already {proposal.status}")
+
+    declared_self = twin_repository.create_confirmed_version(db, user_id, proposal.proposedAttributes)
+    evolution_repository.set_status(db, row, "accepted")
+    return declared_self
+
+
+@router.post("/identity/evolution/{proposal_id}/reject", response_model=IdentityEvolutionProposal)
+def reject_evolution(
+    proposal_id: str,
+    db: Session = Depends(get_db),
+) -> IdentityEvolutionProposal:
+    """Reject -> no mutation whatsoever to identity data (merge gate 2)."""
+    found = evolution_repository.get(db, proposal_id)
+    if found is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown proposal")
+    row, proposal = found
+    if proposal.status != "pending":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Proposal already {proposal.status}")
+
+    return evolution_repository.set_status(db, row, "rejected")
