@@ -5,13 +5,26 @@ Maintains Gap Firewall: never modifies or recomputes deterministic GapResult.
 """
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
 from app.prompts.loader import load_prompt
+from app.providers.llm.repair import generate_structured_with_repair
 from app.schemas.evidence import EvidenceEvent
 from app.services.decision.packet import BOTTLENECK_TAXONOMY, BottleneckCandidate
 from app.services.identity.bottleneck_v0 import diagnose_bottleneck_v0
 from app.services.identity.scoring.gap import CreateConsumeResult, GapResult
+
+
+def _validate_bottleneck_response(raw: object) -> list:
+    """B4 (docs/work.md): raises on a malformed LLM response so
+    generate_structured_with_repair() knows to retry once before this
+    function falls back to the deterministic v0 diagnosis. Accepts
+    either a bare array or {'candidates': [...]}, matching what the
+    caller already tolerated."""
+    candidates = raw if isinstance(raw, list) else (raw.get("candidates") if isinstance(raw, dict) else None)
+    if not isinstance(candidates, list) or not candidates:
+        raise ValueError("response must be a non-empty array of bottleneck candidates")
+    return candidates
 
 
 def diagnose_bottleneck_v1(
@@ -70,11 +83,9 @@ def diagnose_bottleneck_v1(
             },
         }
 
-        res = llm_provider.generate_structured(schema=schema, messages=messages)
-
-        raw_candidates = res if isinstance(res, list) else res.get("candidates", [])
-        if not isinstance(raw_candidates, list) or not raw_candidates:
-            return diagnose_bottleneck_v0(gap_result, create_consume, consistency, events)
+        raw_candidates = generate_structured_with_repair(
+            llm_provider, schema, messages, _validate_bottleneck_response
+        )
 
         parsed_candidates: List[BottleneckCandidate] = []
         for item in raw_candidates:

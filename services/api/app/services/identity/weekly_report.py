@@ -8,10 +8,20 @@ from datetime import datetime, timezone
 import uuid
 from typing import Any, List, Optional
 
+from app.providers.llm.repair import generate_structured_with_repair
 from app.schemas.evidence import EvidenceEvent
 from app.schemas.identity import DeclaredSelf
 from app.schemas.report import WeeklyReport
 from app.services.identity.scoring.gap import GapResult
+
+
+def _validate_report_response(raw: object) -> dict:
+    """B4 (docs/work.md): raises on a malformed LLM response so
+    generate_structured_with_repair() knows to retry once before this
+    function falls back to the deterministic v0 report."""
+    if not isinstance(raw, dict) or "narrative" not in raw or "highlights" not in raw:
+        raise ValueError("response must be a JSON object with 'narrative' and 'highlights' keys")
+    return raw
 
 
 def _build_v0_fallback_report(
@@ -120,7 +130,7 @@ def generate_weekly_report(
         }
 
         if hasattr(llm_provider, "generate_structured"):
-            res = llm_provider.generate_structured(schema=schema, messages=messages)
+            res = generate_structured_with_repair(llm_provider, schema, messages, _validate_report_response)
         elif hasattr(llm_provider, "generate"):
             res = llm_provider.generate(messages)
         else:

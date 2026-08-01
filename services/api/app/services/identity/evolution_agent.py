@@ -9,12 +9,26 @@ from datetime import datetime, timezone
 import uuid
 from typing import Any, List, Optional
 
+from app.providers.llm.repair import generate_structured_with_repair
 from app.schemas.evidence import EvidenceEvent
 from app.schemas.evolution import IdentityEvolutionProposal, ProposedChange
 from app.schemas.identity import DeclaredSelf
 from app.services.identity.scoring.gap import GapResult
 
 MIN_EVIDENCE_CITATIONS = 3
+
+
+def _validate_evolution_response(raw: object) -> dict:
+    """B4 (docs/work.md): raises on a malformed LLM response so
+    generate_structured_with_repair() knows to retry once before this
+    function falls back to returning no proposal (never a silent
+    fabricated one)."""
+    if not isinstance(raw, dict):
+        raise ValueError("response must be a JSON object")
+    changes = raw.get("proposedChanges")
+    if not isinstance(changes, list) or not changes:
+        raise ValueError("response must include a non-empty 'proposedChanges' array")
+    return raw
 
 
 def propose_identity_evolution(
@@ -84,7 +98,7 @@ def propose_identity_evolution(
         }
 
         if hasattr(llm_provider, "generate_structured"):
-            res = llm_provider.generate_structured(schema=schema, messages=messages)
+            res = generate_structured_with_repair(llm_provider, schema, messages, _validate_evolution_response)
         elif hasattr(llm_provider, "generate"):
             res = llm_provider.generate(messages)
         else:
