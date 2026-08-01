@@ -6,6 +6,7 @@ import {
   useRevokeProvider,
   useTriggerGithubSync,
   useTriggerNotionSync,
+  useTriggerCalendarSync,
   type IntegrationStatus,
 } from "@/lib/integrations/useIntegrations";
 
@@ -30,13 +31,19 @@ export function IntegrationConnectionCard({
   const revokeMutation = useRevokeProvider();
   const githubSyncMutation = useTriggerGithubSync();
   const notionSyncMutation = useTriggerNotionSync();
+  const calendarSyncMutation = useTriggerCalendarSync();
 
   const [isConnecting, setIsConnecting] = useState(false);
 
   const isConnected = status?.isActive ?? false;
   const isExpired = status ? !status.isActive && status.revokedAt === null : false;
-  const syncMutation = provider === "notion" ? notionSyncMutation : githubSyncMutation;
-  const canSync = provider === "github" || provider === "notion";
+  const syncMutation =
+    provider === "notion"
+      ? notionSyncMutation
+      : provider === "google-calendar"
+      ? calendarSyncMutation
+      : githubSyncMutation;
+  const canSync = provider === "github" || provider === "notion" || provider === "google-calendar";
 
   const handleConnect = async () => {
     setIsConnecting(true);

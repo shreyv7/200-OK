@@ -76,3 +76,16 @@ export function useTriggerNotionSync() {
     },
   });
 }
+
+export function useTriggerCalendarSync() {
+  const queryClient = useQueryClient();
+  return useMutation<GithubSyncResponse, Error, void>({
+    mutationFn: () =>
+      apiFetch<GithubSyncResponse>("/calendar/sync", {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["integrations-status"] });
+    },
+  });
+}

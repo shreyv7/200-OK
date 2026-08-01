@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
@@ -44,4 +45,30 @@ def get_plan_view(
         )
 
     return calendar_repository.list_upcoming(db, user_id)
+
+
+class CalendarSyncResponse(BaseModel):
+    provider: str
+    synced: int
+    message: str
+
+
+@router.post("/calendar/sync", response_model=CalendarSyncResponse)
+def trigger_calendar_sync(
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+    settings: Settings = Depends(get_settings),
+) -> CalendarSyncResponse:
+    """Manually triggers Google Calendar sync for connected user."""
+    synced = GoogleCalendarSyncService().sync_upcoming_events(
+        user_id=user_id,
+        db=db,
+        settings=settings,
+    )
+    return CalendarSyncResponse(
+        provider="google-calendar",
+        synced=synced,
+        message=f"Synced {synced} calendar events.",
+    )
+
 

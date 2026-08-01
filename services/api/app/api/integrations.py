@@ -9,7 +9,8 @@ import logging
 from typing import List, Literal, Optional
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
@@ -199,11 +200,12 @@ def connect_integration(
 @router.get("/{provider}/callback", response_model=CallbackResponse)
 def oauth_callback(
     provider: str,
+    request: Request,
     code: str = Query(..., description="Authorization code from OAuth provider"),
     state: str = Query(..., description="CSRF state parameter"),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
-) -> CallbackResponse:
+) -> Response | CallbackResponse:
     """Handles OAuth callback, validates state token, exchanges code for credentials, and persists encrypted tokens."""
     _validate_provider(provider)
     user_id = validate_oauth_state(state, expected_provider=provider)
@@ -258,7 +260,6 @@ def oauth_callback(
     else:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Unsupported provider")
 
-
     repo.upsert_connection(
         user_id=user_id,
         provider=provider,
@@ -267,6 +268,13 @@ def oauth_callback(
         scopes=tokens.scopes,
         expires_at=tokens.expires_at,
     )
+
+    accept_header = request.headers.get("accept", "")
+    user_agent = request.headers.get("user-agent", "")
+    if "text/html" in accept_header or "application/xhtml+xml" in accept_header or "Mozilla" in user_agent:
+        # Browser OAuth flow — redirect back to web frontend with query param
+        frontend_url = settings.cors_origin_list[0] if settings.cors_origin_list else "http://localhost:8080"
+        return RedirectResponse(url=f"{frontend_url}/?connected={provider}")
 
     return CallbackResponse(
         provider=provider,
