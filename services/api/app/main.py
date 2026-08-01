@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from app.api.capacity import router as capacity_router
+from app.api.catalog import router as catalog_router
 from app.api.dashboard import router as dashboard_router
 from app.api.evidence import router as evidence_router
 from app.api.health import router as health_router
@@ -28,6 +29,7 @@ app.include_router(onboarding_router, prefix="/api/v1")
 app.include_router(stack_router, prefix="/api/v1")
 app.include_router(capacity_router, prefix="/api/v1")
 app.include_router(ledger_router, prefix="/api/v1")
+app.include_router(catalog_router, prefix="/api/v1")
 
 register_identity_wiring()
 

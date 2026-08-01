@@ -50,6 +50,15 @@ def get_lens_weights(
     return ledger_repository.get_lens_weights(db, user_id)
 
 
+@router.get("/ledger/adaptations", response_model=list[LedgerEntry])
+def list_adaptations(
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+) -> list[LedgerEntry]:
+    """System Unlearning / lens-adjustment entries — milestones.md M6 P1 view."""
+    return ledger_repository.list_adaptations(db, user_id)
+
+
 @router.post("/ledger/record", response_model=LedgerEntry)
 def record_ledger_entry(
     request: LedgerRecordRequest,

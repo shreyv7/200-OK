@@ -1,6 +1,7 @@
 """Owner: Backend"""
 
 from app.models.base import Base
+from app.models.catalog import GrowthStoryModel, MentorModel, ToolModel
 from app.models.evidence_event import EvidenceEventModel
 from app.models.intervention import InterventionModel
 from app.models.intervention_budget import InterventionBudgetModel
@@ -24,4 +25,7 @@ __all__ = [
     "InterventionModel",
     "LedgerEntryModel",
     "InterventionBudgetModel",
+    "GrowthStoryModel",
+    "ToolModel",
+    "MentorModel",
 ]
