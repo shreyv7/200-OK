@@ -29,6 +29,13 @@ from app.services.identity.kpi import (
 from app.services.identity.bottleneck_v0 import (
     diagnose_bottleneck_v0,
 )
+from app.services.identity.bottleneck_v1 import (
+    diagnose_bottleneck_v1,
+)
+from app.services.identity.growth_decision import (
+    GrowthDecision,
+    evaluate_growth_decision,
+)
 from app.services.identity.recompute import (
     recompute_user_gap,
 )
@@ -58,6 +65,9 @@ __all__ = [
     "KPISnapshot",
     "build_kpi_snapshot",
     "diagnose_bottleneck_v0",
+    "diagnose_bottleneck_v1",
+    "GrowthDecision",
+    "evaluate_growth_decision",
     "recompute_user_gap",
     "InterviewTurn",
     "InterviewState",

@@ -43,6 +43,9 @@ class DecisionPacket:
     bottleneck_candidates: List[BottleneckCandidate]
     invalidate_stack: bool
     timestamp: str
+    low_confidence_flag: bool = False
+    should_recurate: bool = False
+    curation_intensity: str = "full"  # "full" | "light" | "micro"
 
 
 def build_decision_packet(
@@ -52,10 +55,16 @@ def build_decision_packet(
     create_consume_ratio: float,
     timestamp: str,
     bottleneck_candidates: Optional[List[BottleneckCandidate]] = None,
+    low_confidence_flag: bool = False,
+    should_recurate: Optional[bool] = None,
+    curation_intensity: str = "full",
 ) -> DecisionPacket:
     """Builds a DecisionPacket given GapResult and optional prior Gap score."""
     gap_delta = (gap_result.gap_score - prior_gap_score) if prior_gap_score is not None else 0
     invalidate = abs(gap_delta) >= GAP_DELTA_INVALIDATION_THRESHOLD
+
+    if should_recurate is None:
+        should_recurate = invalidate
 
     return DecisionPacket(
         user_id=user_id,
@@ -66,4 +75,7 @@ def build_decision_packet(
         bottleneck_candidates=bottleneck_candidates or [],
         invalidate_stack=invalidate,
         timestamp=timestamp,
+        low_confidence_flag=low_confidence_flag,
+        should_recurate=should_recurate,
+        curation_intensity=curation_intensity,
     )
