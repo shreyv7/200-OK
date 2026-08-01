@@ -11,6 +11,28 @@ from app.models.evidence_event import EvidenceEventModel
 from app.schemas.evidence import EvidenceEvent
 
 
+def to_schema(row: EvidenceEventModel) -> EvidenceEvent:
+    """Convert a persisted row back into the frozen EvidenceEvent contract.
+
+    identityAttributeIds is never persisted (see app/services/identity's
+    enrich_evidence_event) — it's re-derived on read, not stored, so this
+    always returns an empty list here by design, not an oversight.
+    """
+    return EvidenceEvent(
+        id=row.id,
+        userId=row.user_id,
+        timestamp=row.timestamp,
+        source=row.source,
+        type=row.type,
+        category=row.category,
+        identityAttributeIds=[],
+        value=row.value,
+        baseWeight=row.base_weight,
+        metadata=row.event_metadata,
+        simulated=row.simulated,
+    )
+
+
 def get_by_dedupe_hash(db: Session, dedupe_hash: str) -> EvidenceEventModel | None:
     stmt = select(EvidenceEventModel).where(
         EvidenceEventModel.dedupe_hash == dedupe_hash

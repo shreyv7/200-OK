@@ -7,8 +7,9 @@ from datetime import datetime
 
 from app.integrations.mcp.base import EvidenceAdapter
 from app.schemas.evidence import EvidenceEvent, RawMCPPayload
+from app.services.identity.scoring.constants import EVENT_WEIGHTS
 
-GITHUB_COMMIT_WEIGHT = 4.0
+_TYPE = "github_commit"
 
 
 class FixtureGithubAdapter(EvidenceAdapter):
@@ -25,11 +26,11 @@ class FixtureGithubAdapter(EvidenceAdapter):
             userId=raw["userId"],
             timestamp=timestamp,
             source="github",
-            type="github_commit",
+            type=_TYPE,
             category="creation",
             identityAttributeIds=raw.get("identityAttributeIds", []),
             value=1.0,
-            baseWeight=GITHUB_COMMIT_WEIGHT,
+            baseWeight=EVENT_WEIGHTS[_TYPE],
             metadata={"sha": raw.get("sha"), "message": raw.get("message")},
             simulated=True,
         )
