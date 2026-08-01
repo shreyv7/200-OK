@@ -97,6 +97,7 @@ def test_gap_snapshot_conversion_matches_recompute_result() -> None:
         gap_delta=-6.0,
         prior_gap_score=68,
         timestamp="2026-08-01T00:00:00+00:00",
+        invalidate_stack=True,
     )
 
     snapshot = _to_gap_snapshot("u1", result)

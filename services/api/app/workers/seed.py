@@ -17,9 +17,12 @@ from app.core.db import SessionLocal
 from app.integrations.mcp.github.adapter import FixtureGithubAdapter
 from app.integrations.mcp.trellis.adapter import FixtureTrellisAdapter
 from app.models.user import User
-from app.repositories import twin_repository
+from app.providers.llm.fake import FakeLLMProvider
+from app.providers.search.fake import FakeSearchProvider
+from app.repositories import intervention_repository, twin_repository
 from app.schemas.evidence import RawMCPPayload
 from app.schemas.identity import DeclaredSelf, IdentityAttribute, IdentityMarker
+from app.services.curation import stack_orchestration
 from app.services.evidence import service as evidence_service
 
 logging.basicConfig(level=logging.INFO)
@@ -142,17 +145,32 @@ def _generate_history(session, user_id: str) -> int:
     return inserted
 
 
+def _ensure_prepared_intervention(session, user_id: str) -> bool:
+    """At least one cached stack must exist so `GET /stack/active` never
+    404s on a fresh demo environment (milestones.md M4). Uses Fake
+    providers — seed data must be deterministic, never a live network
+    call, matching the rest of this script's philosophy."""
+    if intervention_repository.get_active(session, user_id) is not None:
+        return False
+    stack_orchestration.refresh_stack(
+        session, user_id, search_provider=FakeSearchProvider(), llm_provider=FakeLLMProvider()
+    )
+    return True
+
+
 def main() -> None:
     session = SessionLocal()
     try:
         user = _upsert_demo_user(session)
         twin = _upsert_confirmed_twin(session, user.id)
         inserted = _generate_history(session, user.id)
+        prepared = _ensure_prepared_intervention(session, user.id)
         logger.info(
-            "Seed complete: user=%s twin_version=%d inserted_events=%d",
+            "Seed complete: user=%s twin_version=%d inserted_events=%d prepared_stack=%s",
             user.id,
             twin.version,
             inserted,
+            prepared,
         )
     finally:
         session.close()
