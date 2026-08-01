@@ -1,89 +1,89 @@
 """Dead-letter filter and event sanitizer module for AIA evidence pipeline.
 
+Consumes Backend Pydantic EvidenceEvent schema (app.schemas.evidence).
 Validates raw evidence payloads and rejects corrupt, out-of-bounds, or malformed events.
 """
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Tuple
+from datetime import datetime, timezone
+from typing import Any, Dict, Optional, Tuple, Union
 
+from app.schemas.evidence import EvidenceEvent, EventCategory, SourceProvider
 from app.services.identity.scoring.constants import EVENT_WEIGHTS
 
 
-@dataclass
-class SanitizedEvent:
-    event_id: str
-    user_id: str
-    event_type: str
-    attr_id: str
-    a_ik: float  # Applicability in [0.0, 1.0]
-    delta_days: float  # Age in days (>= 0.0)
-    value_override: Optional[float] = None
-    source: str = "app"
-    simulated: bool = False
-    metadata: Dict[str, Any] = field(default_factory=dict)
+def get_event_delta_days(timestamp: datetime, ref_time: Optional[datetime] = None) -> float:
+    """Calculates age in days (delta_days >= 0.0) from timestamp relative to ref_time (UTC)."""
+    if ref_time is None:
+        ref_time = datetime.now(timezone.utc)
+    elif ref_time.tzinfo is None:
+        ref_time = ref_time.replace(tzinfo=timezone.utc)
+
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=timezone.utc)
+
+    delta_seconds = (ref_time - timestamp).total_seconds()
+    delta_days = delta_seconds / 86400.0
+    return max(0.0, delta_days)
 
 
-def validate_and_sanitize_event(raw: Dict[str, Any]) -> Tuple[bool, Optional[SanitizedEvent], Optional[str]]:
-    """Validates raw evidence dictionary and returns (is_valid, SanitizedEvent, error_message).
+def validate_and_sanitize_event(raw: Union[Dict[str, Any], EvidenceEvent]) -> Tuple[bool, Optional[EvidenceEvent], Optional[str]]:
+    """Validates raw dict or EvidenceEvent Pydantic instance.
     
-    Rejects malformed, corrupt, or out-of-bounds evidence payloads before scoring.
+    Returns (is_valid, EvidenceEvent, error_message).
+    Rejects dead-letter / malformed payloads without throwing unhandled exceptions.
     """
+    if isinstance(raw, EvidenceEvent):
+        if not raw.userId or not raw.userId.strip():
+            return False, None, "Missing or empty 'userId'"
+        if not raw.type or not raw.type.strip():
+            return False, None, "Missing or empty 'type'"
+        return True, raw, None
+
     if not isinstance(raw, dict):
-        return False, None, "Payload must be a dictionary"
+        return False, None, "Payload must be a dictionary or EvidenceEvent instance"
 
-    user_id = raw.get("user_id")
-    if not user_id or not isinstance(user_id, str):
-        return False, None, "Missing or invalid 'user_id'"
+    user_id = raw.get("userId") or raw.get("user_id")
+    if not user_id or not isinstance(user_id, str) or not user_id.strip():
+        return False, None, "Missing or empty 'userId'"
 
-    event_type = raw.get("event_type")
-    if not event_type or not isinstance(event_type, str):
-        return False, None, "Missing or invalid 'event_type'"
+    event_type = raw.get("type") or raw.get("event_type")
+    if not event_type or not isinstance(event_type, str) or not event_type.strip():
+        return False, None, "Missing or empty 'type'"
 
-    if event_type not in EVENT_WEIGHTS and "value_override" not in raw:
-        return False, None, f"Unknown event_type '{event_type}' without value_override"
-
-    delta_days = raw.get("delta_days", 0.0)
-    try:
-        delta_days = float(delta_days)
-    except (ValueError, TypeError):
-        return False, None, "Invalid 'delta_days', must be numeric"
-
-    if delta_days < 0.0:
-        return False, None, "Negative 'delta_days' is not allowed"
-
-    a_ik = raw.get("a_ik", 1.0)
-    try:
-        a_ik = float(a_ik)
-    except (ValueError, TypeError):
-        return False, None, "Invalid 'a_ik', must be numeric"
-
-    if not (0.0 <= a_ik <= 1.0):
-        return False, None, f"'a_ik' out of bounds [0.0, 1.0]: {a_ik}"
-
-    value_override = raw.get("value_override")
-    if value_override is not None:
-        try:
-            value_override = float(value_override)
-        except (ValueError, TypeError):
-            return False, None, "Invalid 'value_override', must be numeric"
-
-    event_id = str(raw.get("event_id") or raw.get("id") or f"evt_{hash(str(raw))}")
-    attr_id = str(raw.get("attr_id") or raw.get("identity_attribute_id") or "unmapped")
-    source = str(raw.get("source", "app"))
+    event_id = str(raw.get("id") or raw.get("event_id") or f"evt_{hash(str(raw))}")
+    source = raw.get("source", "trellis")
+    category = raw.get("category", "passive_learning")
+    base_weight = raw.get("baseWeight", raw.get("base_weight", EVENT_WEIGHTS.get(event_type, 1.0)))
+    value = raw.get("value", base_weight)
     simulated = bool(raw.get("simulated", False))
+    identity_attr_ids = raw.get("identityAttributeIds") or raw.get("identity_attribute_ids") or []
     metadata = raw.get("metadata") if isinstance(raw.get("metadata"), dict) else {}
 
-    sanitized = SanitizedEvent(
-        event_id=event_id,
-        user_id=user_id,
-        event_type=event_type,
-        attr_id=attr_id,
-        a_ik=a_ik,
-        delta_days=delta_days,
-        value_override=value_override,
-        source=source,
-        simulated=simulated,
-        metadata=metadata,
-    )
+    ts_raw = raw.get("timestamp")
+    if isinstance(ts_raw, datetime):
+        ts = ts_raw
+    elif isinstance(ts_raw, str):
+        try:
+            ts = datetime.fromisoformat(ts_raw)
+        except ValueError:
+            ts = datetime.now(timezone.utc)
+    else:
+        ts = datetime.now(timezone.utc)
 
-    return True, sanitized, None
+    try:
+        event = EvidenceEvent(
+            id=event_id,
+            userId=user_id,
+            timestamp=ts,
+            source=source,
+            type=event_type,
+            category=category,
+            identityAttributeIds=list(identity_attr_ids),
+            value=float(value),
+            baseWeight=float(base_weight),
+            metadata=metadata,
+            simulated=simulated,
+        )
+        return True, event, None
+    except Exception as exc:
+        return False, None, f"Failed to construct EvidenceEvent: {str(exc)}"

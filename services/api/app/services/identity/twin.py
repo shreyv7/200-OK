@@ -1,19 +1,21 @@
 """Digital Twin Read Model module for AIA.
 
-Combines active confirmed DeclaredSelf with current RevealedSelfAggregates and GapResult.
+Combines Backend DeclaredSelf Pydantic model with RevealedSelfAggregates and GapResult.
 """
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import List, Optional
 
-from app.services.identity.scoring.declared_self import DeclaredSelf
+from app.schemas.identity import DeclaredSelf
+from app.schemas.evidence import EvidenceEvent
+from app.services.identity.sanitizer import get_event_delta_days
 from app.services.identity.scoring.gap import (
     AttrInput,
     EvidenceInput,
     GapResult,
     compute_gap_score,
 )
-from app.services.identity.sanitizer import SanitizedEvent
 from app.services.identity.aggregates import (
     RevealedSelfAggregates,
     build_revealed_aggregates,
@@ -22,58 +24,61 @@ from app.services.identity.aggregates import (
 
 @dataclass
 class DigitalTwinReadModel:
-    user_id: str
-    declared_version: int
-    declared_self: DeclaredSelf
-    revealed_aggregates: RevealedSelfAggregates
-    gap_result: GapResult
-    last_updated_at: str
+    userId: str
+    declaredVersion: int
+    declaredSelf: DeclaredSelf
+    revealedAggregates: RevealedSelfAggregates
+    gapResult: GapResult
+    lastUpdatedAt: datetime
 
 
 def assemble_digital_twin(
     user_id: str,
     declared_self: DeclaredSelf,
-    events: List[SanitizedEvent],
+    events: List[EvidenceEvent],
     window_days: int = 21,
-    timestamp: str = "2026-08-01T12:00:00Z",
+    ref_time: Optional[datetime] = None,
 ) -> DigitalTwinReadModel:
-    """Assembles unified Digital Twin read model combining DeclaredSelf, RevealedAggregates, and GapResult."""
-    attr_ids = [attr["id"] for attr in declared_self.get("attributes", [])]
+    """Assembles DigitalTwinReadModel combining Backend DeclaredSelf, RevealedAggregates, and GapResult."""
+    if ref_time is None:
+        ref_time = datetime.now(timezone.utc)
+
+    attr_ids = [attr.id for attr in declared_self.attributes]
     attr_inputs = [
         AttrInput(
-            attr_id=attr["id"],
-            w_i=attr["weight"],
-            D_i=attr["declared_weekly_target"],
+            attr_id=attr.id,
+            w_i=attr.weight,
+            D_i=attr.targetWeeklyPoints,
         )
-        for attr in declared_self.get("attributes", [])
+        for attr in declared_self.attributes
     ]
-
-    # Filter events inside temporal window
-    window_events = [e for e in events if e.delta_days <= window_days]
 
     # Build revealed aggregates
-    revealed = build_revealed_aggregates(window_events, attr_ids, window_days=window_days)
+    revealed = build_revealed_aggregates(events, attr_ids, window_days=window_days, ref_time=ref_time)
 
-    # Convert to EvidenceInput list for Gap calculation
-    evidence_inputs = [
-        EvidenceInput(
-            event_type=e.event_type,
-            attr_id=e.attr_id,
-            a_ik=e.a_ik,
-            delta_days=e.delta_days,
-            value_override=e.value_override,
-        )
-        for e in window_events
-    ]
+    # Convert events to EvidenceInput list for Gap calculation
+    evidence_inputs: List[EvidenceInput] = []
+    for e in events:
+        delta = get_event_delta_days(e.timestamp, ref_time)
+        if delta <= window_days:
+            for attr_id in e.identityAttributeIds:
+                evidence_inputs.append(
+                    EvidenceInput(
+                        event_type=e.type,
+                        attr_id=attr_id,
+                        a_ik=1.0,
+                        delta_days=delta,
+                        value_override=e.value,
+                    )
+                )
 
-    # Compute GapResult
     gap_res = compute_gap_score(attr_inputs, evidence_inputs)
 
     return DigitalTwinReadModel(
-        user_id=user_id,
-        declared_version=declared_self.get("version", 1),
-        declared_self=declared_self,
-        revealed_aggregates=revealed,
-        gap_result=gap_res,
-        last_updated_at=timestamp,
+        userId=user_id,
+        declaredVersion=declared_self.version,
+        declaredSelf=declared_self,
+        revealedAggregates=revealed,
+        gapResult=gap_res,
+        lastUpdatedAt=ref_time,
     )

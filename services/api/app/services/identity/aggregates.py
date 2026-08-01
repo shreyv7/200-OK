@@ -1,12 +1,15 @@
 """Revealed Self Aggregate Builder module for AIA.
 
-Computes aggregated behavioral points, event counts, and ratios over rolling temporal windows.
+Computes aggregated behavioral points, event counts, and ratios over rolling temporal windows
+from Backend EvidenceEvent streams.
 """
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Dict, List, Optional
 
-from app.services.identity.sanitizer import SanitizedEvent
+from app.schemas.evidence import EvidenceEvent
+from app.services.identity.sanitizer import get_event_delta_days
 from app.services.identity.scoring.gap import (
     EvidenceInput,
     compute_revealed,
@@ -36,37 +39,39 @@ class RevealedSelfAggregates:
 
 
 def build_revealed_aggregates(
-    events: List[SanitizedEvent],
+    events: List[EvidenceEvent],
     attribute_ids: List[str],
     window_days: int = 21,
+    ref_time: Optional[datetime] = None,
 ) -> RevealedSelfAggregates:
-    """Builds RevealedSelfAggregates over a rolling time window (default 21 days).
-    
-    Serves as input to Gap computation and Twin read model.
-    """
-    # Filter events inside the temporal window
-    window_events = [e for e in events if e.delta_days <= window_days]
-    
-    # Convert SanitizedEvent list to EvidenceInput list for gap arithmetic helpers
-    evidence_inputs = [
-        EvidenceInput(
-            event_type=e.event_type,
-            attr_id=e.attr_id,
-            a_ik=e.a_ik,
-            delta_days=e.delta_days,
-            value_override=e.value_override,
-        )
-        for e in window_events
-    ]
+    """Builds RevealedSelfAggregates from Backend EvidenceEvent stream over a rolling window."""
+    evidence_inputs: List[EvidenceInput] = []
+    window_events: List[EvidenceEvent] = []
+
+    for e in events:
+        delta = get_event_delta_days(e.timestamp, ref_time)
+        if delta <= window_days:
+            window_events.append(e)
+            # Add EvidenceInput for each mapped attribute
+            for attr_id in e.identityAttributeIds:
+                evidence_inputs.append(
+                    EvidenceInput(
+                        event_type=e.type,
+                        attr_id=attr_id,
+                        a_ik=1.0,
+                        delta_days=delta,
+                        value_override=e.value,
+                    )
+                )
 
     attr_aggs: Dict[str, AttributeAggregate] = {}
 
     for attr_id in attribute_ids:
         R_i, creation_c, passive_c, drift_c = compute_revealed(evidence_inputs, attr_id)
         
-        attr_events = [e for e in window_events if e.attr_id == attr_id]
-        event_count = len(attr_events)
-        last_delta = min((e.delta_days for e in attr_events), default=None)
+        attr_evts = [e for e in window_events if attr_id in e.identityAttributeIds]
+        event_count = len(attr_evts)
+        last_delta = min((get_event_delta_days(e.timestamp, ref_time) for e in attr_evts), default=None)
 
         attr_aggs[attr_id] = AttributeAggregate(
             attr_id=attr_id,

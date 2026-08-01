@@ -1,1 +1,1 @@
-"""Trellis FastAPI App package."""
+"""Trellis FastAPI application package."""
