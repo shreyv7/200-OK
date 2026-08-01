@@ -47,6 +47,9 @@ htmlcov/
 
 # Dependencies
 node_modules/
+.venv/
+__pycache__/
+*.pyc
 
 # Next.js
 .next/
