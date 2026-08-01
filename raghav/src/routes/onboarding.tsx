@@ -8,11 +8,7 @@ import { LatticeMark } from "@/components/trellis/Lattice";
 import { ApiError } from "@/lib/api/client";
 import * as api from "@/lib/api/endpoints";
 import { mapDeclaredSelf, type OnboardingDeclaredView } from "@/lib/api/mappers";
-import type {
-  ApiDeclaredSelf,
-  ApiOnboardingPersona,
-  ApiOnboardingQuestion,
-} from "@/lib/api/types";
+import type { ApiDeclaredSelf } from "@/lib/api/types";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({
@@ -45,7 +41,14 @@ interface ChatMessage {
   text: string;
 }
 
-const DEFAULT_QUESTIONS: ApiOnboardingQuestion[] = [
+interface Question {
+  id: string;
+  prompt: string;
+  hint: string;
+  options: string[];
+}
+
+const QUESTIONS: Question[] = [
   {
     id: "aspiration",
     prompt: "Who are you trying to become?",
@@ -98,15 +101,12 @@ const DEFAULT_QUESTIONS: ApiOnboardingQuestion[] = [
   },
 ];
 
-type Phase = "persona" | "chat" | "extracting" | "confirm";
+type Phase = "chat" | "extracting" | "confirm";
 
 function Onboarding() {
   const navigate = useNavigate();
-  const [phase, setPhase] = useState<Phase>("persona");
+  const [phase, setPhase] = useState<Phase>("chat");
   const [qIndex, setQIndex] = useState(0);
-  const [personas, setPersonas] = useState<ApiOnboardingPersona[]>([]);
-  const [selectedPersona, setSelectedPersona] = useState<ApiOnboardingPersona | null>(null);
-  const [questions, setQuestions] = useState<ApiOnboardingQuestion[]>(DEFAULT_QUESTIONS);
   const [answers, setAnswers] = useState<string[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -117,7 +117,7 @@ function Onboarding() {
     {
       id: "m1",
       role: "ai",
-      text: DEFAULT_QUESTIONS[0]!.prompt,
+      text: QUESTIONS[0]!.prompt,
     },
   ]);
   const [typing, setTyping] = useState(false);
@@ -131,30 +131,7 @@ function Onboarding() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing, phase]);
 
-  useEffect(() => {
-    void api.getOnboardingPersonas().then(setPersonas).catch(() => setPersonas([]));
-  }, []);
-
-  const currentQ = questions[qIndex]!;
-
-  const selectPersona = (persona: ApiOnboardingPersona | null) => {
-    const nextQuestions = persona?.questions ?? DEFAULT_QUESTIONS;
-    setSelectedPersona(persona);
-    setQuestions(nextQuestions);
-    setQIndex(0);
-    setAnswers([]);
-    setMessages([
-      {
-        id: "m0",
-        role: "ai",
-        text: persona
-          ? `We'll start with your ${persona.title} path. This is a starting point, not a label — you will confirm the identity I extract.`
-          : "I'm going to ask a few short questions — not personality adjectives, but things that show up as behaviour.",
-      },
-      { id: "m1", role: "ai", text: nextQuestions[0]!.prompt },
-    ]);
-    setPhase("chat");
-  };
+  const currentQ = QUESTIONS[qIndex]!;
 
   const selectAnswer = (answer: string) => {
     if (typing || phase !== "chat") return;
@@ -167,7 +144,7 @@ function Onboarding() {
     ]);
 
     const nextIndex = qIndex + 1;
-    if (nextIndex < questions.length) {
+    if (nextIndex < QUESTIONS.length) {
       setTyping(true);
       setTimeout(() => {
         setTyping(false);
@@ -177,7 +154,7 @@ function Onboarding() {
           {
             id: `a_${nextIndex}`,
             role: "ai",
-            text: questions[nextIndex]!.prompt,
+            text: QUESTIONS[nextIndex]!.prompt,
           },
         ]);
       }, 700);
@@ -186,7 +163,7 @@ function Onboarding() {
       setTimeout(() => {
         void (async () => {
           try {
-            const boot = await api.onboardingTurn({ sessionId: null, message: "", personaId: selectedPersona?.id ?? null });
+            const boot = await api.onboardingTurn({ sessionId: null, message: "" });
             let sessionId = boot.sessionId;
             let draft: ApiDeclaredSelf | null = null;
 
@@ -262,46 +239,7 @@ function Onboarding() {
 
       <main className="relative z-10 mx-auto max-w-3xl px-5 py-8 sm:py-12">
         <AnimatePresence mode="wait">
-          {phase === "persona" ? (
-            <motion.section
-              key="persona"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease }}
-              className="space-y-6"
-            >
-              <div>
-                <p className="label-eyebrow text-signal">Choose a starting path</p>
-                <h1 className="mt-2 font-display text-3xl sm:text-4xl font-medium tracking-tight leading-[1.1]">
-                  What kind of growth are you working toward?
-                </h1>
-                <p className="mt-3 max-w-xl text-sm text-muted-foreground">
-                  Pick a path to make the interview more useful. It does not define you;
-                  you will review and confirm every identity marker before Trellis uses it.
-                </p>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {personas.map((persona) => (
-                  <button
-                    key={persona.id}
-                    onClick={() => selectPersona(persona)}
-                    className="group rounded-3xl border border-border bg-card p-5 text-left transition-all hover:border-signal/50 hover:bg-signal/5"
-                  >
-                    <p className="label-eyebrow text-signal">Onboarding path</p>
-                    <h2 className="mt-2 text-lg font-medium">{persona.title}</h2>
-                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{persona.description}</p>
-                    <p className="mt-4 font-mono text-[10px] text-muted-foreground">{persona.outcome}</p>
-                  </button>
-                ))}
-              </div>
-              <button
-                onClick={() => selectPersona(null)}
-                className="rounded-full border border-border px-5 py-3 text-sm text-muted-foreground transition-colors hover:text-foreground"
-              >
-                Continue with a custom path
-              </button>
-            </motion.section>
-          ) : phase === "chat" || phase === "extracting" ? (
+          {phase === "chat" || phase === "extracting" ? (
             <motion.div
               key="chat"
               initial={{ opacity: 0, y: 12 }}
@@ -322,7 +260,7 @@ function Onboarding() {
               </div>
 
               <div className="flex items-center gap-2">
-                {questions.map((q, i) => (
+                {QUESTIONS.map((q, i) => (
                   <div
                     key={q.id}
                     className={`h-1 flex-1 rounded-full transition-colors ${

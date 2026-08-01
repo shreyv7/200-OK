@@ -28,21 +28,6 @@ export interface ApiOnboardingTurnResponse {
   done: boolean;
 }
 
-export interface ApiOnboardingQuestion {
-  id: string;
-  prompt: string;
-  hint: string;
-  options: string[];
-}
-
-export interface ApiOnboardingPersona {
-  id: string;
-  title: string;
-  description: string;
-  outcome: string;
-  questions: ApiOnboardingQuestion[];
-}
-
 export interface ApiMeUser {
   id: string;
   email?: string | null;

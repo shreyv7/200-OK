@@ -23,7 +23,6 @@ from app.providers.llm.repair import generate_structured_with_repair
 from app.repositories import onboarding_repository, twin_repository
 from app.schemas.identity import IdentityAttribute
 from app.schemas.onboarding import OnboardingTurnResponse
-from app.services.identity.onboarding_personas import get_persona, get_persona_from_context
 
 FIXED_ONBOARDING_TOPICS: list[str] = [
     "What are you trying to become? (your aspiration)",
@@ -73,24 +72,13 @@ def advance_turn(
     user_id: str,
     session_id: str | None,
     message: str,
-    persona_id: str | None = None,
 ) -> OnboardingTurnResponse:
     if session_id is None:
-        persona = get_persona(persona_id)
-        if persona_id is not None and persona is None:
-            raise ValueError(f"Unknown onboarding persona: {persona_id}")
-        topics = persona.questions if persona is not None else FIXED_ONBOARDING_TOPICS
         session_row = onboarding_repository.create_session(db, user_id)
-        if persona is not None:
-            onboarding_repository.append_turn(
-                db, session_row.id, "assistant",
-                f"Selected onboarding path: {persona.title}. Intended outcome: {persona.outcome}",
-            )
-        first_question = topics[0].prompt if persona is not None else topics[0]
-        onboarding_repository.append_turn(db, session_row.id, "assistant", first_question)
+        onboarding_repository.append_turn(db, session_row.id, "assistant", FIXED_ONBOARDING_TOPICS[0])
         return OnboardingTurnResponse(
             sessionId=session_row.id,
-            nextQuestion=first_question,
+            nextQuestion=FIXED_ONBOARDING_TOPICS[0],
             draft=None,
             done=False,
         )
@@ -103,11 +91,8 @@ def advance_turn(
     turns = onboarding_repository.list_turns(db, session_id)
     answered = len([t for t in turns if t.role == "user"])
 
-    persona_context = next((t.content for t in turns if t.content.startswith("Selected onboarding path:")), None)
-    persona = get_persona_from_context(persona_context)
-    topics = persona.questions if persona is not None else FIXED_ONBOARDING_TOPICS
-    if answered < len(topics):
-        next_question = topics[answered].prompt if persona is not None else topics[answered]
+    if answered < len(FIXED_ONBOARDING_TOPICS):
+        next_question = FIXED_ONBOARDING_TOPICS[answered]
         onboarding_repository.append_turn(db, session_id, "assistant", next_question)
         return OnboardingTurnResponse(
             sessionId=session_id, nextQuestion=next_question, draft=None, done=False

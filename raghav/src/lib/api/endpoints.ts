@@ -1,10 +1,5 @@
 import { apiFetch } from "./client";
-import type {
-  ApiDeclaredSelf,
-  ApiMeUser,
-  ApiOnboardingPersona,
-  ApiOnboardingTurnResponse,
-} from "./types";
+import type { ApiDeclaredSelf, ApiMeUser, ApiOnboardingTurnResponse } from "./types";
 
 export function getMe() {
   return apiFetch<ApiMeUser>("/me");
@@ -13,16 +8,11 @@ export function getMe() {
 export function onboardingTurn(body: {
   sessionId?: string | null;
   message?: string;
-  personaId?: string | null;
 }) {
   return apiFetch<ApiOnboardingTurnResponse>("/identity/onboarding", {
     method: "POST",
     body: JSON.stringify(body),
   });
-}
-
-export function getOnboardingPersonas() {
-  return apiFetch<ApiOnboardingPersona[]>("/identity/onboarding/personas");
 }
 
 export function getIdentity() {
