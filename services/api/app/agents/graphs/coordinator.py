@@ -10,36 +10,38 @@ from app.agents.nodes.registry import NODE_REGISTRY
 
 
 class CoordinatorState(TypedDict):
-  trigger: str
-  run_id: str
-  user_id: str
-  decision_packet: dict[str, Any]
-  stack_draft: dict[str, Any] | None
-  visited: Annotated[list[str], operator.add]
+    trigger: str
+    run_id: str
+    user_id: str
+    decision_packet: dict[str, Any]
+    stack_draft: dict[str, Any] | None
+    visited: Annotated[list[str], operator.add]
+    evidence_id: str | None
+    hypothesis_id: str | None
 
 
 GRAPH_NODE_ORDER = [
-  "coordinator",
-  "knowledge",
-  "opportunity",
-  "planner",
-  "reflection",
-  "coach",
+    "coordinator",
+    "knowledge",
+    "opportunity",
+    "planner",
+    "reflection",
+    "coach",
 ]
 
 
 def build_coordinator_graph(checkpointer: MemorySaver | None = None):
-  """Compile the M0 Coordinator shell with registered no-op nodes."""
-  graph = StateGraph(CoordinatorState)
+    """Compile the Coordinator graph with registered nodes."""
+    graph = StateGraph(CoordinatorState)
 
-  for name in GRAPH_NODE_ORDER:
-      graph.add_node(name, NODE_REGISTRY[name])
+    for name in GRAPH_NODE_ORDER:
+        graph.add_node(name, NODE_REGISTRY[name])
 
-  graph.add_edge(START, "coordinator")
-  for current, nxt in zip(GRAPH_NODE_ORDER, GRAPH_NODE_ORDER[1:]):
-      graph.add_edge(current, nxt)
-  graph.add_edge("coach", END)
+    graph.add_edge(START, "coordinator")
+    for current, nxt in zip(GRAPH_NODE_ORDER, GRAPH_NODE_ORDER[1:]):
+        graph.add_edge(current, nxt)
+    graph.add_edge("coach", END)
 
-  if checkpointer is not None:
-      return graph.compile(checkpointer=checkpointer)
-  return graph.compile()
+    if checkpointer is not None:
+        return graph.compile(checkpointer=checkpointer)
+    return graph.compile()
