@@ -9,6 +9,7 @@ from app.schemas.catalog import GrowthStorySchema, MentorSchema, ToolSchema
 from app.schemas.dashboard import DashboardSummary
 from app.schemas.decision import DecisionPacket
 from app.schemas.evidence import EvidenceEvent, EvidenceIngestRequest, RawMCPPayload
+from app.schemas.feed import FeedEventRequest, FeedItem, FeedPage, PreparedFeedIntervention
 from app.schemas.evolution import IdentityEvolutionProposal, ProposedChange
 from app.schemas.gap import AttributeContribution, GapBreakdown
 from app.schemas.identity import DeclaredSelf, IdentityAttribute, IdentityMarker
@@ -34,6 +35,10 @@ __all__ = [
     "EvidenceEvent",
     "EvidenceIngestRequest",
     "RawMCPPayload",
+    "FeedEventRequest",
+    "FeedItem",
+    "FeedPage",
+    "PreparedFeedIntervention",
     "IdentityEvolutionProposal",
     "ProposedChange",
     "AttributeContribution",

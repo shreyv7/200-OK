@@ -1,8 +1,8 @@
-export const MIN_LOW_VALUE_RATIO = 0.3;
+export const MIN_LOW_VALUE_RATIO = 0.7;
 export const MIN_SCROLL_COUNT = 5;
 
 /** Scrolls older than this drop out of the evaluation window. */
-const WINDOW_MS = 5 * 60_000;
+const WINDOW_MS = 15 * 60_000;
 /** After firing, the detector stays quiet for this long. */
 const COOLDOWN_MS = 10 * 60_000;
 

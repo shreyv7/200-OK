@@ -50,6 +50,24 @@ def get_search_provider(settings: Settings = Depends(get_settings)) -> SearchPro
             api_key=settings.tavily_api_key, timeout_seconds=settings.tavily_timeout_seconds
         )
 
+    if settings.search_provider == "youtube":
+        return get_youtube_provider(settings)
+
+    if settings.search_provider == "combined":
+        from app.providers.search.composite import CompositeSearchProvider
+        from app.providers.search.tavily import TavilySearchProvider
+
+        providers: list[SearchProvider] = [get_youtube_provider(settings)]
+        if settings.tavily_api_key:
+            providers.insert(
+                0,
+                TavilySearchProvider(
+                    api_key=settings.tavily_api_key,
+                    timeout_seconds=settings.tavily_timeout_seconds,
+                ),
+            )
+        return CompositeSearchProvider(*providers)
+
     return FakeSearchProvider()
 
 

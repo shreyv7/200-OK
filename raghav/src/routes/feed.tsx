@@ -15,6 +15,12 @@ import { AppShell } from "@/components/trellis/AppShell";
 import { useTrellis } from "@/lib/trellis/store";
 import { mock } from "@/lib/trellis/mockApi";
 import {
+  getGrowthFeed,
+  getPreparedFeedIntervention,
+  recordFeedEvent,
+} from "@/lib/api/endpoints";
+import type { ApiFeedItem } from "@/lib/api/types";
+import {
   evaluateMomentDetector,
   MIN_LOW_VALUE_RATIO,
   MIN_SCROLL_COUNT,
@@ -63,6 +69,11 @@ type FeedItem =
       card: InterventionCard;
       trigger: DetectorInputs;
       evaluatedInMs: number;
+    }
+  | {
+      id: string;
+      mode: "resource";
+      resource: ApiFeedItem;
     };
 
 function GrowthFeed() {
@@ -86,6 +97,7 @@ function GrowthFeed() {
       tag: c.tag,
     })),
   );
+  const [preparedCard, setPreparedCard] = useState<InterventionCard | null>(null);
   const [scrolls, setScrolls] = useState<ScrollRecord[]>([]);
   const [lastFiredAt, setLastFiredAt] = useState<number | null>(null);
   const [detector, setDetector] = useState(() =>
@@ -113,9 +125,47 @@ function GrowthFeed() {
     [],
   );
 
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all([getGrowthFeed(), getPreparedFeedIntervention()])
+      .then(([feed, prepared]) => {
+        if (cancelled) return;
+        setItems(
+          feed.items.map((item) =>
+            item.kind === "resource"
+              ? { id: item.id, mode: "resource" as const, resource: item }
+              : {
+                  id: item.id,
+                  mode: "scroll" as const,
+                  kind: item.kind,
+                  headline: item.title,
+                  tag: item.tag,
+                },
+          ),
+        );
+        const action = prepared.stack.elements.find((element) => element.type === "micro_mission")
+          ?? prepared.stack.elements[0];
+        if (action) {
+          setPreparedCard({
+            id: action.id,
+            lens: action.type === "media" ? "Media" : "Micro-Action",
+            action: action.title,
+            reasoning: action.explanation.whyNow,
+            duration: "A focused next step",
+          });
+        }
+      })
+      .catch(() => {
+        // The owned demo feed remains available if onboarding or the API is unavailable.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const morphNextCard = useCallback(
     (result: ReturnType<typeof evaluateMomentDetector>) => {
-      const card = nextIntervention;
+      const card = preparedCard ?? nextIntervention;
       setItems((prev) => {
         const idx = prev.findIndex(
           (it) => it.mode === "scroll" && !resolvedIds.includes(it.id),
@@ -135,7 +185,7 @@ function GrowthFeed() {
         description: `scroll=${result.inputs.scrollCount} · low-value ${(result.inputs.lowValueRatio * 100).toFixed(0)}% · ${result.evaluatedInMs.toFixed(1)}ms`,
       });
     },
-    [nextIntervention, resolvedIds],
+    [nextIntervention, preparedCard, resolvedIds],
   );
 
   // When System Unlearning swaps lenses, remorph any pending intervention card
@@ -289,6 +339,8 @@ function GrowthFeed() {
                         root={scrollRoot}
                         onVisible={() => onCardVisible(item)}
                       />
+                    ) : item.mode === "resource" ? (
+                      <ResourceCard key={item.id} item={item.resource} />
                     ) : (
                       <InterventionMorphCard
                         key={item.id}
@@ -493,6 +545,57 @@ function ScrollCard({
         <span>↗ Share</span>
       </div>
     </div>
+  );
+}
+
+function ResourceCard({ item }: { item: ApiFeedItem }) {
+  const isYouTube = Boolean(item.metadata.video_id);
+  const openResource = () => {
+    void recordFeedEvent(item.id, "opened", {
+      url: item.url,
+      provider: isYouTube ? "youtube" : "web",
+    });
+  };
+
+  return (
+    <article className="rounded-2xl border border-signal/25 bg-white p-4 shadow-[0_8px_24px_rgba(200,137,43,0.08)]">
+      {item.thumbnailUrl && (
+        <img
+          src={item.thumbnailUrl}
+          alt=""
+          className="mb-3 aspect-video w-full rounded-xl bg-secondary object-cover"
+          loading="lazy"
+        />
+      )}
+      <div className="flex items-center justify-between gap-3">
+        <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-signal">
+          {isYouTube ? "YouTube next step" : item.tag}
+        </span>
+        {item.sourceBadge && (
+          <span className="rounded-full border border-border px-2 py-0.5 font-mono text-[9px] text-muted-foreground">
+            {item.sourceBadge}
+          </span>
+        )}
+      </div>
+      <h3 className="mt-2 text-[15px] font-medium leading-snug text-foreground">{item.title}</h3>
+      {item.channelTitle && (
+        <p className="mt-1 font-mono text-[10px] text-muted-foreground">{item.channelTitle}</p>
+      )}
+      {item.explanation && (
+        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{item.explanation.whyNow}</p>
+      )}
+      {item.url && (
+        <a
+          href={item.url}
+          target="_blank"
+          rel="noreferrer"
+          onClick={openResource}
+          className="mt-3 inline-flex rounded-xl bg-foreground px-3 py-2 text-xs font-medium text-background transition-colors hover:bg-foreground/90"
+        >
+          Open resource
+        </a>
+      )}
+    </article>
   );
 }
 

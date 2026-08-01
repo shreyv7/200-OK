@@ -11,6 +11,7 @@ from app.api.capacity import router as capacity_router
 from app.api.catalog import router as catalog_router
 from app.api.dashboard import router as dashboard_router
 from app.api.evidence import router as evidence_router
+from app.api.feed import router as feed_router
 from app.api.github import router as github_router
 from app.api.health import router as health_router
 from app.api.identity import router as identity_router
@@ -45,6 +46,7 @@ app.include_router(health_router, prefix="/api/v1")
 app.include_router(health_router)  # unprefixed convenience for liveness probes
 app.include_router(me_router, prefix="/api/v1")
 app.include_router(evidence_router, prefix="/api/v1")
+app.include_router(feed_router, prefix="/api/v1")
 app.include_router(dashboard_router, prefix="/api/v1")
 app.include_router(identity_router, prefix="/api/v1")
 app.include_router(integrations_router, prefix="/api/v1")

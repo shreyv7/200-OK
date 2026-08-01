@@ -46,7 +46,11 @@ def search_with_fallback(
         documents = future.result(timeout=timeout_seconds)
 
         valid = [d for d in documents if d.title and d.url and d.extract]
-        if valid:
+        # Provider-level curated results (for example a missing YouTube key)
+        # are useful only as the final fallback and must never receive a
+        # misleading "Live web" cache badge.
+        has_live_candidate = any("fallback" not in d.source.lower() for d in valid)
+        if valid and has_live_candidate:
             resource_cache_repository.store(db, query, valid, badge="Live web")
             return valid, "Live web"
     except Exception:
