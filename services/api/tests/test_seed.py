@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.core.config import get_settings
 from app.models.intervention import InterventionModel
+from app.models.calendar_event import CalendarEventModel
 from app.models.identity_evolution import IdentityEvolutionProposalModel
 from app.models.user import User
 from app.repositories import evolution_repository, intervention_repository, ledger_repository
@@ -88,11 +89,17 @@ def test_ensure_demo_evolution_proposal_is_idempotent(db_session) -> None:
     assert second is False
 
 
+def _clear_calendar_events(db_session, user_id: str) -> None:
+    db_session.query(CalendarEventModel).filter(CalendarEventModel.user_id == user_id).delete()
+    db_session.commit()
+
+
 def test_ensure_demo_calendar_events_is_idempotent(db_session) -> None:
     from app.repositories import calendar_repository
     from app.workers.seed import _ensure_demo_calendar_events
 
     user = _upsert_demo_user(db_session)
+    _clear_calendar_events(db_session, user.id)
     first = _ensure_demo_calendar_events(db_session, user.id)
     assert first is True
     assert len(calendar_repository.list_upcoming(db_session, user.id)) == 3
