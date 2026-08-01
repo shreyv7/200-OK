@@ -103,6 +103,63 @@ def sample_gap_snapshot(*, gap_delta: float = 6.0, gap_score: int = 68) -> "GapS
     )
 
 
+def sample_decision_packet_with_bottleneck(
+    *,
+    bottleneck: str = "execution",
+    confidence: float = 0.72,
+    invalidate_stack: bool = True,
+) -> DecisionPacket:
+    return DecisionPacket(
+        userId="user-aarav",
+        gapDelta=1.5,
+        invalidateStack=invalidate_stack,
+        invalidatedElementIds=[],
+        bottleneck=BottleneckPacket(
+            bottleneck=bottleneck,  # type: ignore[arg-type]
+            confidence=confidence,
+            supporting_evidence=["fixture evidence"],
+            missing_evidence=[],
+            alternative_bottleneck="confidence",
+        ),
+        rankingFeatures={},
+    )
+
+
+def sample_prior_stack_for_replacement() -> IdentityStack:
+    return IdentityStack(
+        id="stack-prior-001",
+        userId="user-aarav",
+        hypothesisId="hyp-prior-001",
+        bottleneck="execution",
+        elements=[
+            StackElement(
+                id="elem-keep-mission",
+                type="micro_mission",
+                title="Keep this mission",
+                sourceBadge="Curated fallback",
+                explanation=StackExplanation(
+                    whyThis="Prior mission still valid.",
+                    whyNow="No invalidation.",
+                    howReducesGap="Continues momentum.",
+                ),
+            ),
+            StackElement(
+                id="elem-replace-media",
+                type="media",
+                title="Stale media resource",
+                url="https://example.com/stale",
+                sourceBadge="Curated fallback",
+                explanation=StackExplanation(
+                    whyThis="Stale resource.",
+                    whyNow="Marked for replacement.",
+                    howReducesGap="Was useful once.",
+                ),
+            ),
+        ],
+        curatedAt=datetime.now(timezone.utc),
+    )
+
+
 def sample_onboarding_confirm_event(
     *,
     with_gap_snapshot: bool = True,

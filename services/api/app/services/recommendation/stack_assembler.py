@@ -1,21 +1,116 @@
+"""Identity Stack assembler — smallest coherent combination — AIS M4."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any
 
-from app.schemas import DecisionPacket, IdentityStack, StackElement, StackExplanation
-from app.providers.llm.fake import FakeLLMProvider
+from app.schemas import DecisionPacket, IdentityStack, StackElement
 from app.providers.llm.base import LLMProvider
-from app.providers.search.fake import FakeSearchProvider
 from app.providers.search.base import SearchProvider
+from app.services.recommendation.curation_context import get_curation_llm, get_curation_search
+from app.services.recommendation.explanations import build_explanation
+from app.services.recommendation.fallback_catalog import get_fallback_knowledge, get_fallback_mission
+from app.services.recommendation.replacement import apply_replacement_policy
 
 
 def build_providers(
     llm: LLMProvider | None = None,
     search: SearchProvider | None = None,
 ) -> tuple[LLMProvider, SearchProvider]:
-    """Factory seam for DI; Backend Depends() will inject real providers in M3+."""
-    return llm or FakeLLMProvider(), search or FakeSearchProvider()
+    """Factory seam for DI; Backend Depends() will inject real providers."""
+    return llm or get_curation_llm(), search or get_curation_search()
+
+
+def _candidate_to_element(
+    candidate: dict[str, Any],
+    *,
+    bottleneck: str,
+    small_experiment: bool,
+    capacity_tier: str,
+) -> StackElement:
+    element_type = candidate["type"]
+    source_badge = candidate.get("sourceBadge", "Curated fallback")
+    title = candidate["title"]
+    return StackElement(
+        id=candidate["id"],
+        type=element_type,
+        title=title,
+        url=candidate.get("url"),
+        sourceBadge=source_badge,
+        explanation=build_explanation(
+            bottleneck=bottleneck,
+            element_type=element_type,
+            title=title,
+            source_badge=source_badge,
+            small_experiment=small_experiment and element_type == "micro_mission",
+            capacity_tier=capacity_tier,
+        ),
+    )
+
+
+def assemble_identity_stack(
+    decision_packet: DecisionPacket,
+    *,
+    knowledge_candidates: list[dict[str, Any]],
+    planner_candidates: list[dict[str, Any]],
+    prior_stack: IdentityStack | None = None,
+    capacity_tier: str = "full",
+    run_id: str | None = None,
+    small_experiment: bool = False,
+) -> IdentityStack:
+    """Assemble the smallest coherent stack (≥1 action + ≥1 resource). Never empty."""
+    bottleneck = (
+        decision_packet.bottleneck.bottleneck
+        if decision_packet.bottleneck is not None
+        else "execution"
+    )
+    fallback_knowledge = get_fallback_knowledge(bottleneck)
+    fallback_mission = get_fallback_mission(bottleneck, small_experiment=small_experiment)
+
+    if not knowledge_candidates:
+        knowledge_candidates = [fallback_knowledge]
+    if not planner_candidates:
+        planner_candidates = [fallback_mission]
+
+    resource, mission = apply_replacement_policy(
+        prior_stack,
+        bottleneck=bottleneck,
+        invalidate_stack=decision_packet.invalidateStack,
+        invalidated_element_ids=decision_packet.invalidatedElementIds,
+        knowledge_candidates=knowledge_candidates,
+        planner_candidates=planner_candidates,
+        fallback_knowledge=fallback_knowledge,
+        fallback_mission=fallback_mission,
+    )
+
+    elements = [
+        _candidate_to_element(
+            mission,
+            bottleneck=bottleneck,
+            small_experiment=small_experiment,
+            capacity_tier=capacity_tier,
+        ),
+        _candidate_to_element(
+            resource,
+            bottleneck=bottleneck,
+            small_experiment=small_experiment,
+            capacity_tier=capacity_tier,
+        ),
+    ]
+
+    stack_key = run_id or decision_packet.userId
+    hypothesis_id = f"hyp-{stack_key}"
+    now = datetime.now(timezone.utc)
+
+    return IdentityStack(
+        id=f"stack-{stack_key}",
+        userId=decision_packet.userId,
+        hypothesisId=hypothesis_id,
+        bottleneck=bottleneck,
+        elements=elements,
+        curatedAt=now,
+    )
 
 
 def assemble_stack(
@@ -27,55 +122,31 @@ def assemble_stack(
     run_id: str | None = None,
     llm: LLMProvider | None = None,
     search: SearchProvider | None = None,
+    prior_stack: IdentityStack | None = None,
+    knowledge_candidates: list[dict[str, Any]] | None = None,
+    planner_candidates: list[dict[str, Any]] | None = None,
+    small_experiment: bool = False,
 ) -> IdentityStack:
-    """Assemble the smallest coherent Identity Stack for the current bottleneck.
-
-    M1 returns a fixture-valid stack. M4+ will retrieve, rank, and explain.
-    Never returns an empty stack — falls back to curated fixture elements.
-    """
+    """Public assembler entry — used by graph assemble node and warm-cache seam."""
     _llm, _search = build_providers(llm, search)
-    _ = (_llm, _search, candidates, capacity_tier, ledger_weights)
+    _ = (_llm, _search, candidates, ledger_weights)
 
-    stack_key = run_id or decision_packet.userId
-    hypothesis_id = f"hyp-{stack_key}"
-    now = datetime.now(timezone.utc)
     bottleneck = (
         decision_packet.bottleneck.bottleneck
         if decision_packet.bottleneck is not None
         else "execution"
     )
+    if knowledge_candidates is None:
+        knowledge_candidates = candidates or [get_fallback_knowledge(bottleneck)]
+    if planner_candidates is None:
+        planner_candidates = [get_fallback_mission(bottleneck, small_experiment=small_experiment)]
 
-    elements = [
-        StackElement(
-            id="elem-action-1",
-            type="micro_mission",
-            title="Ship a 60-second speaking clip",
-            sourceBadge="Curated fallback",
-            explanation=StackExplanation(
-                whyThis="Targets the execution bottleneck with the smallest publishable action.",
-                whyNow="Gap invalidation or drift trigger requested a refreshed stack.",
-                howReducesGap="Creation evidence raises Revealed Self toward the declared speaker target.",
-            ),
-        ),
-        StackElement(
-            id="elem-resource-1",
-            type="media",
-            title="How to structure a one-minute talk",
-            url="https://example.com/one-minute-talk",
-            sourceBadge="Curated fallback",
-            explanation=StackExplanation(
-                whyThis="Supports the micro-mission with a concrete structure.",
-                whyNow=f"Paired with the action while capacity tier is {capacity_tier}.",
-                howReducesGap="Passive learning plus immediate application closes the say-do gap.",
-            ),
-        ),
-    ]
-
-    return IdentityStack(
-        id=f"stack-{stack_key}",
-        userId=decision_packet.userId,
-        hypothesisId=hypothesis_id,
-        bottleneck=bottleneck,
-        elements=elements,
-        curatedAt=now,
+    return assemble_identity_stack(
+        decision_packet,
+        knowledge_candidates=knowledge_candidates,
+        planner_candidates=planner_candidates,
+        prior_stack=prior_stack,
+        capacity_tier=capacity_tier,
+        run_id=run_id,
+        small_experiment=small_experiment,
     )
