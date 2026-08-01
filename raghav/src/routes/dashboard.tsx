@@ -40,11 +40,14 @@ function DashboardPage() {
 
 function Dashboard() {
   const { user } = useUser();
-  const { gap, stack, declaredSelf, events, now, struts, pulsedStruts, capacity, tier } =
+  const { gap, stack, declaredSelf, events, now, struts, pulsedStruts, capacity, tier, selectedPersona } =
     useTrellis();
   const [sheetOpen, setSheetOpen] = useState(false);
   const bottleneck = mock.currentBottleneck;
   const firstName = user?.firstName || user?.fullName || "you";
+  // Dynamic labels from the selected persona
+  const personaRoleLabel = selectedPersona.roleLabel;
+  const personaBottleneckLabel = selectedPersona.bottleneckLabel;
 
   const createPts = Math.round(gap.createRatio * 100);
   const consumePts = Math.round(gap.consumeRatio * 100);
@@ -66,7 +69,9 @@ function Dashboard() {
               <br />I said I wanted to become?
             </h1>
             <p className="mt-3 text-sm text-muted-foreground max-w-md">
-              Welcome, {firstName}. Gap recomputes on every evidence event for your account.
+              Welcome, {firstName}. Tracking your path to becoming a{" "}
+              <span className="text-foreground font-medium">{personaRoleLabel}</span>.
+              Gap recomputes on every evidence event.
             </p>
           </div>
           <button
@@ -123,7 +128,7 @@ function Dashboard() {
               value: ratio.toFixed(2),
               sub: "<1 = consume wins",
             },
-            { label: "Bottleneck", value: bottleneck.name, sub: bottleneck.confidence },
+            { label: "Bottleneck", value: personaBottleneckLabel, sub: bottleneck.confidence },
           ].map((m) => (
             <div key={m.label} className="rounded-2xl border border-border bg-card p-4">
               <p className="label-eyebrow">{m.label}</p>
