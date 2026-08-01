@@ -15,6 +15,7 @@ import { Route as FeedRouteImport } from './routes/feed'
 import { Route as LedgerRouteImport } from './routes/ledger'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as ReportRouteImport } from './routes/report'
+import { Route as SettingsRouteImport } from './routes/settings'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +47,11 @@ const ReportRoute = ReportRouteImport.update({
   path: '/report',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/ledger': typeof LedgerRoute
   '/onboarding': typeof OnboardingRoute
   '/report': typeof ReportRoute
+  '/settings': typeof SettingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/ledger': typeof LedgerRoute
   '/onboarding': typeof OnboardingRoute
   '/report': typeof ReportRoute
+  '/settings': typeof SettingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,13 +79,27 @@ export interface FileRoutesById {
   '/ledger': typeof LedgerRoute
   '/onboarding': typeof OnboardingRoute
   '/report': typeof ReportRoute
+  '/settings': typeof SettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/dashboard' | '/feed' | '/ledger' | '/onboarding' | '/report'
+    | '/'
+    | '/dashboard'
+    | '/feed'
+    | '/ledger'
+    | '/onboarding'
+    | '/report'
+    | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/feed' | '/ledger' | '/onboarding' | '/report'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/feed'
+    | '/ledger'
+    | '/onboarding'
+    | '/report'
+    | '/settings'
   id:
     | '__root__'
     | '/'
@@ -86,6 +108,7 @@ export interface FileRouteTypes {
     | '/ledger'
     | '/onboarding'
     | '/report'
+    | '/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -95,6 +118,7 @@ export interface RootRouteChildren {
   LedgerRoute: typeof LedgerRoute
   OnboardingRoute: typeof OnboardingRoute
   ReportRoute: typeof ReportRoute
+  SettingsRoute: typeof SettingsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -141,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -151,6 +182,7 @@ const rootRouteChildren: RootRouteChildren = {
   LedgerRoute: LedgerRoute,
   OnboardingRoute: OnboardingRoute,
   ReportRoute: ReportRoute,
+  SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
