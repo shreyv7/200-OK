@@ -25,7 +25,7 @@ def _validate_evolution_response(raw: object) -> dict:
     function falls back to returning no proposal (never a silent
     fabricated one)."""
     if not isinstance(raw, dict):
-        raise ValueError("response must be a JSON object")
+        raise TypeError("response must be a JSON object")
     changes = raw.get("proposedChanges")
     if not isinstance(changes, list) or not changes:
         raise ValueError("response must include a non-empty 'proposedChanges' array")

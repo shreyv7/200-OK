@@ -20,14 +20,12 @@ deterministic path (v0 heuristic, cached report, etc.) without delay.
 
 from __future__ import annotations
 
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable
 
 from app.providers.llm.base import LLMProvider
 
-T = TypeVar("T")
 
-
-def generate_structured_with_repair(
+def generate_structured_with_repair[T](
     llm_provider: LLMProvider,
     schema: dict[str, Any],
     messages: list[dict[str, str]],
