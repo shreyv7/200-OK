@@ -1,10 +1,16 @@
-# Python
+# Dependencies
+node_modules/
+
+# Python & Virtual Environments
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
 env/
+.venv/
+venv/
+ENV/
 build/
 develop-eggs/
 dist/
@@ -20,19 +26,11 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-*.pyc
-
-# Virtual Environments
-.venv
-.venv/
-venv/
-ENV/
 
 # Testing & Coverage
 .pytest_cache/
 .coverage
 htmlcov/
-.ruff_cache/
 
 # Environment / Credentials
 .env
@@ -44,28 +42,3 @@ htmlcov/
 .vscode/
 .idea/
 *.swp
-
-# Dependencies
-node_modules/
-.venv/
-__pycache__/
-*.pyc
-
-# Next.js
-.next/
-out/
-
-# Debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# OS
-.DS_Store
-
-# Vercel
-.vercel
-
-# TypeScript
-*.tsbuildinfo
-next-env.d.ts
