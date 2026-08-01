@@ -58,9 +58,11 @@ class Settings(BaseSettings):
     # separated. Combined with gemini_api_key (kept for back-compat single-
     # key config) via gemini_api_key_pool() below.
     gemini_api_keys: str = ""
-    # gemini-1.5-flash 404s against the current v1beta API (retired) —
-    # verified live while wiring B1 (docs/work.md).
-    gemini_model: str = "gemini-2.0-flash"
+    # gemini-1.5-flash 404s (retired). gemini-2.0-flash loads but returned
+    # 429 RESOURCE_EXHAUSTED (limit: 0) on every tested key. gemini-2.5-flash-lite
+    # is the first model confirmed with real working quota — verified via
+    # a full live onboarding extraction round-trip (docs/work.md B1/B6).
+    gemini_model: str = "gemini-2.5-flash-lite"
     bedrock_region: str | None = None
     bedrock_model_id: str | None = None
     # Off by default (docs/work.md B3 ground rule: "if we don't buy
