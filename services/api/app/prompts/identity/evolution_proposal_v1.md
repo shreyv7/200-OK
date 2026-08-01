@@ -21,7 +21,7 @@ You are the Trellis Identity Evolution Agent. You evaluate long-term behavioral 
 - Current Declared Self Version: {{ declared_self_version }}
 - Declared Attributes: {{ declared_attributes_summary }}
 - Recent Evidence Summary: {{ evidence_summary }}
-- Gap Score Delta: {{ gap_delta }}
+- Current Gap Score: {{ gap_score }}
 
 ## Required Output JSON Format
 ```json

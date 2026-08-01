@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.di import get_current_user_id, get_db, get_llm_provider, get_search_provider
+from app.core.di import get_budgeted_llm_provider, get_current_user_id, get_db, get_search_provider
 from app.providers.llm.base import LLMProvider
 from app.providers.search.base import SearchProvider
 from app.repositories import intervention_repository
@@ -32,7 +32,7 @@ def get_active_stack(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
     search_provider: SearchProvider = Depends(get_search_provider),
-    llm_provider: LLMProvider = Depends(get_llm_provider),
+    llm_provider: LLMProvider = Depends(get_budgeted_llm_provider),
 ) -> IdentityStack:
     row = intervention_repository.get_active(db, user_id)
     if row is None:
