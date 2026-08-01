@@ -241,28 +241,29 @@ function Dashboard() {
 
         <section className="rounded-3xl border border-border bg-card p-6 sm:p-8 space-y-5">
           <p className="label-eyebrow">Attribute divergence</p>
-          {(gap.breakdown ?? []).map((attr) => (
-            <div key={attr.attributeId} className="space-y-1.5">
-              <div className="flex items-center justify-between font-mono text-[11px]">
-                <span className="text-foreground font-medium">{attr.label}</span>
-                <span className="text-muted-foreground">
-                  {Math.round(attr.revealed * 100)}% / {Math.round(attr.target * 100)}%
-                </span>
+          {(gap.breakdown ?? []).map((attr) => {
+            const targetPts = Math.max(attr.target, 0.01);
+            const revealedPts = Math.max(attr.revealed, 0);
+            const progressPct = Math.min(100, (revealedPts / targetPts) * 100);
+            return (
+              <div key={attr.attributeId} className="space-y-1.5">
+                <div className="flex items-center justify-between font-mono text-[11px]">
+                  <span className="text-foreground font-medium">{attr.label}</span>
+                  <span className="text-muted-foreground">
+                    {revealedPts.toFixed(1)} / {targetPts.toFixed(1)} pts · {Math.round(progressPct)}%
+                  </span>
+                </div>
+                <div className="relative h-2 w-full overflow-hidden rounded-full bg-black/[0.05]">
+                  <motion.div
+                    className="absolute top-0 h-full rounded-full bg-signal"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progressPct}%` }}
+                    transition={{ duration: 0.9, ease }}
+                  />
+                </div>
               </div>
-              <div className="relative h-2 w-full overflow-hidden rounded-full bg-black/[0.05]">
-                <div
-                  className="absolute top-0 h-full rounded-full bg-black/[0.12]"
-                  style={{ width: `${attr.target * 100}%` }}
-                />
-                <motion.div
-                  className="absolute top-0 h-full rounded-full bg-signal"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${attr.revealed * 100}%` }}
-                  transition={{ duration: 0.9, ease }}
-                />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </section>
 
         <p className="font-mono text-[10px] text-muted-foreground text-center">

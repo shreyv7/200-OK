@@ -63,6 +63,23 @@ export function recordFeedEvent(
   });
 }
 
+export function createEvidence(body: {
+  timestamp: string;
+  source: "trellis" | "youtube" | "github" | "google_calendar" | "notion" | "x";
+  type: string;
+  category: "creation" | "passive_learning" | "focus_drift" | "reflection";
+  identityAttributeIds?: string[];
+  value: number;
+  baseWeight: number;
+  metadata?: Record<string, unknown>;
+  simulated?: boolean;
+}) {
+  return apiFetch("/evidence", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
 export function patchCapacity(value: number) {
   return apiFetch<{ capacity: number }>("/capacity", {
     method: "PATCH",

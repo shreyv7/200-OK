@@ -111,6 +111,14 @@ export function mapStackFromVariants(
   return full.elements.map((element) => {
     const light = lightById.get(element.id) ?? element;
     const micro = microById.get(element.id) ?? element;
+    const family =
+      element.type === "media"
+        ? "media"
+        : element.type === "micro_mission"
+          ? "micro_mission"
+          : element.type === "real_world_experience"
+            ? "real_world"
+            : element.type;
     return {
       id: element.id,
       type: elementTypeLabel(element.type),
@@ -119,6 +127,8 @@ export function mapStackFromVariants(
       why: element.explanation.whyThis,
       whyNow: element.explanation.whyNow,
       howItCloses: element.explanation.howReducesGap,
+      hypothesisId: full.hypothesisId,
+      hypothesisFamily: family,
       variants: {
         FULL: variantFromElement(element, "full"),
         LIGHT: variantFromElement(light, "light"),

@@ -100,11 +100,6 @@ function Report() {
             >
               {generating ? "Reading evidence…" : "Generate this week's report"}
             </button>
-            {generating && (
-              <p className="font-mono text-[10px] text-muted-foreground animate-pulse">
-                Narrative agent · Gemini structured over live DB state
-              </p>
-            )}
             {error && (
               <p className="text-sm text-failure">{error}</p>
             )}

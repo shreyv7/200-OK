@@ -290,9 +290,9 @@ function GrowthFeed() {
 
   return (
     <AppShell title="Growth Feed" fitViewport>
-      <div className="mx-auto grid h-full min-h-0 w-full max-w-6xl grid-cols-1 gap-4 overflow-hidden lg:grid-cols-12 lg:gap-6">
+      <div className="mx-auto grid h-full min-h-0 w-full max-w-7xl grid-cols-1 gap-4 overflow-hidden lg:grid-cols-12 lg:gap-7">
         {/* Left: context panel */}
-        <aside className="flex min-h-0 min-w-0 flex-col gap-3 overflow-y-auto overscroll-contain lg:col-span-5 lg:overflow-hidden">
+        <aside className="flex min-h-0 min-w-0 flex-col gap-4 overflow-y-auto overscroll-contain lg:col-span-7 lg:overflow-hidden">
           <header className="shrink-0 space-y-1.5">
             <div className="flex items-center justify-between gap-3">
               <p className="label-eyebrow text-signal">The Catch · F4</p>
@@ -315,10 +315,10 @@ function GrowthFeed() {
           </header>
 
           <div className="min-h-0 shrink overflow-hidden">
-            <DetectorPanel detector={detector} stats={scrollStats} compact />
+            <DetectorPanel detector={detector} stats={scrollStats} />
           </div>
 
-          <div className="grid shrink-0 grid-cols-2 gap-2.5">
+          <div className="grid shrink-0 grid-cols-2 gap-3.5">
             <RingStat
               label="Capacity"
               value={capacity}
@@ -327,7 +327,6 @@ function GrowthFeed() {
               sub="Guardian intensity"
               tone="signal"
               hint="How hard Trellis may push"
-              compact
             />
             <RingStat
               label="Identity Gap"
@@ -338,15 +337,14 @@ function GrowthFeed() {
               tone="growth"
               hint="Lower is better"
               invertFill
-              compact
             />
           </div>
         </aside>
 
         {/* Right: phone frame — fills remaining viewport height */}
-        <div className="hidden min-h-0 min-w-0 lg:col-span-7 lg:flex lg:justify-end">
+        <div className="hidden min-h-0 min-w-0 lg:col-span-5 lg:flex lg:justify-end">
           <div
-            className={`relative flex h-full min-h-0 w-full max-w-[340px] flex-col transition-opacity duration-300 xl:max-w-[360px] ${
+            className={`relative flex h-full min-h-0 w-full max-w-[320px] flex-col transition-opacity duration-300 xl:max-w-[340px] ${
               phoneFullscreen ? "pointer-events-none opacity-0" : ""
             }`}
           >

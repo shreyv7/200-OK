@@ -8,6 +8,7 @@ import React, {
   type ReactNode,
 } from "react";
 import {
+  createEvidence,
   getActiveStack,
   getDashboardSummary,
   getStackVariants,
@@ -72,8 +73,9 @@ export interface TrellisContextType {
   ledger: LedgerEntry[];
   identityUpdated: boolean;
   acceptIdentityEvolution: () => void;
-  dismissStackElement: (id: string) => void;
-  completeStackElement: (id: string) => void;
+  dismissStackElement: (id: string) => Promise<void>;
+  completeStackElement: (id: string) => Promise<void>;
+  completedStackIds: string[];
   /** True once three dismissals retired the current lens (System Unlearning). */
   unlearned: boolean;
   nextIntervention: InterventionCard;
@@ -334,8 +336,9 @@ const defaultContext: TrellisContextType = {
   ledger: [],
   identityUpdated: false,
   acceptIdentityEvolution: () => {},
-  dismissStackElement: () => {},
-  completeStackElement: () => {},
+  dismissStackElement: async () => {},
+  completeStackElement: async () => {},
+  completedStackIds: [],
   unlearned: false,
   nextIntervention: MEDIA_INTERVENTION,
   logDrift: () => {},
@@ -358,6 +361,59 @@ function hypothesisFromCard(card: InterventionCard): string {
   return card.hypothesisId ?? card.id;
 }
 
+const COMPLETED_STACK_KEY = "trellis_completed_stack_ids";
+
+function loadCompletedStackIds(): string[] {
+  try {
+    const raw = localStorage.getItem(COMPLETED_STACK_KEY);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistCompletedStackIds(ids: string[]) {
+  try {
+    localStorage.setItem(COMPLETED_STACK_KEY, JSON.stringify(ids.slice(-100)));
+  } catch {
+    /* ignore quota errors */
+  }
+}
+
+function evidenceShapeForStackElement(element: StackElement): {
+  type: string;
+  category: "creation" | "passive_learning";
+  value: number;
+  baseWeight: number;
+  kind: EvidenceEvent["kind"];
+} {
+  const t = element.type.toLowerCase();
+  if (t.includes("media") || t.includes("story")) {
+    return {
+      type: "passive_item",
+      category: "passive_learning",
+      value: 1.0,
+      baseWeight: 1.0,
+      kind: "passive_learning",
+    };
+  }
+  return {
+    type: "mission_completed",
+    category: "creation",
+    value: 1.0,
+    baseWeight: 3.0,
+    kind: "creation",
+  };
+}
+
+function familyForStackElement(element: StackElement): string {
+  if (element.hypothesisFamily) return element.hypothesisFamily;
+  const t = element.type.toLowerCase();
+  if (t.includes("media")) return "media";
+  if (t.includes("real")) return "real_world";
+  return "micro_mission";
+}
+
 const TrellisContext = createContext<TrellisContextType>(defaultContext);
 
 export function TrellisProvider({ children }: { children: ReactNode }) {
@@ -375,10 +431,23 @@ export function TrellisProvider({ children }: { children: ReactNode }) {
   const [identityUpdated, setIdentityUpdated] = useState(false);
   const [pulsedStruts, setPulsedStruts] = useState<string[]>(defaultContext.pulsedStruts);
   const [selectedPersona, setSelectedPersona] = useState<SelectedPersona>(PERSONA_CATALOGUE[0]!);
+  const [completedStackIds, setCompletedStackIds] = useState<string[]>(() =>
+    typeof window === "undefined" ? [] : loadCompletedStackIds(),
+  );
 
   const selectPersona = useCallback((id: string) => {
     const found = PERSONA_CATALOGUE.find((p) => p.id === id);
     if (found) setSelectedPersona(found);
+  }, []);
+
+  const markStackCompleted = useCallback((id: string) => {
+    setCompletedStackIds((prev) => {
+      if (prev.includes(id)) return prev;
+      const next = [...prev, id];
+      persistCompletedStackIds(next);
+      return next;
+    });
+    setStack((prev) => prev.filter((el) => el.id !== id));
   }, []);
 
   const nextIntervention = useMemo(
@@ -404,11 +473,15 @@ export function TrellisProvider({ children }: { children: ReactNode }) {
         setBottleneck(mapped.bottleneck);
       }
 
-      if (variants && Object.keys(variants).length > 0) {
-        setStack(mapStackFromVariants(variants, active));
-      } else if (active) {
-        setStack(mapStackFromActive(active));
-      }
+      const doneIds = loadCompletedStackIds();
+      setCompletedStackIds(doneIds);
+      const mappedStack =
+        variants && Object.keys(variants).length > 0
+          ? mapStackFromVariants(variants, active)
+          : active
+            ? mapStackFromActive(active)
+            : [];
+      setStack(mappedStack.filter((el) => !doneIds.includes(el.id)));
 
       setLedger(entries.map(mapLedgerEntry));
       const unlearn = mapUnlearningFromLedger(adaptations.length ? adaptations : entries);
@@ -590,6 +663,105 @@ export function TrellisProvider({ children }: { children: ReactNode }) {
     void dismissIntervention(nextIntervention);
   }, [dismissIntervention, nextIntervention]);
 
+  const completeStackElement = useCallback(
+    async (id: string) => {
+      const element = stack.find((el) => el.id === id);
+      if (!element) return;
+
+      const shape = evidenceShapeForStackElement(element);
+      const attributeIds = declaredSelf.attributes.map((a) => a.id);
+      const title =
+        element.variants.FULL?.title ??
+        element.variants.LIGHT?.title ??
+        element.variants.MICRO?.title ??
+        element.type;
+
+      markStackCompleted(id);
+      appendEvent({
+        label: title,
+        kind: shape.kind,
+        strength: shape.baseWeight / 5,
+        occurredAt: new Date().toISOString(),
+        simulated: false,
+        source: "trellis",
+      });
+
+      try {
+        await createEvidence({
+          timestamp: new Date().toISOString(),
+          source: "trellis",
+          type: shape.type,
+          category: shape.category,
+          identityAttributeIds: attributeIds,
+          value: shape.value,
+          baseWeight: shape.baseWeight,
+          metadata: {
+            stackElementId: element.id,
+            stackElementType: element.type,
+            title,
+            action: "completed",
+          },
+          simulated: false,
+        });
+      } catch {
+        /* keep optimistic local completion; refresh may still recover */
+      }
+
+      try {
+        const entry = await recordLedgerAction({
+          hypothesisId: element.hypothesisId ?? element.id,
+          hypothesisFamily: familyForStackElement(element),
+          action: "completed",
+        });
+        prependLedger(mapLedgerEntry(entry));
+      } catch {
+        prependLedger({
+          id: `lg_local_${Date.now()}`,
+          deliveredAt: new Date().toISOString(),
+          verdict: "worked",
+          hypothesis: `Completing ${element.type} closes the gap`,
+          family: element.type,
+          delivered: title,
+          outcomeWindow: "Immediate",
+          evidence: "Marked done (local fallback).",
+        });
+      }
+
+      void refreshLiveData();
+    },
+    [appendEvent, declaredSelf.attributes, markStackCompleted, prependLedger, refreshLiveData, stack],
+  );
+
+  const dismissStackElement = useCallback(
+    async (id: string) => {
+      const element = stack.find((el) => el.id === id);
+      if (!element) return;
+
+      markStackCompleted(id);
+      appendEvent({
+        label: `Dismissed: ${element.type}`,
+        kind: "dismissal",
+        strength: 0.1,
+        occurredAt: new Date().toISOString(),
+        simulated: false,
+      });
+
+      try {
+        const entry = await recordLedgerAction({
+          hypothesisId: element.hypothesisId ?? element.id,
+          hypothesisFamily: familyForStackElement(element),
+          action: "dismissed",
+        });
+        prependLedger(mapLedgerEntry(entry));
+      } catch {
+        /* local dismiss already applied */
+      }
+
+      void refreshLiveData();
+    },
+    [appendEvent, markStackCompleted, prependLedger, refreshLiveData, stack],
+  );
+
   const value: TrellisContextType = {
     ...defaultContext,
     capacity,
@@ -622,6 +794,9 @@ export function TrellisProvider({ children }: { children: ReactNode }) {
     triggerPulse,
     selectedPersona,
     selectPersona,
+    completeStackElement,
+    dismissStackElement,
+    completedStackIds,
   };
 
   return <TrellisContext.Provider value={value}>{children}</TrellisContext.Provider>;

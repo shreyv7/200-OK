@@ -37,9 +37,10 @@ export function StackCard({ element }: { element: StackElement }) {
             )}
             <button
               onClick={() => {
-                dismissStackElement(element.id);
-                toast("Dismissed — evidence logged", {
-                  description: "Gap score adjusted for the missing marker.",
+                void dismissStackElement(element.id).then(() => {
+                  toast("Dismissed — logged to Trust Ledger", {
+                    description: "Stack item removed for this session.",
+                  });
                 });
               }}
               aria-label="Dismiss"
@@ -121,8 +122,16 @@ export function StackCard({ element }: { element: StackElement }) {
           disabled={done}
           onClick={() => {
             setDone(true);
-            completeStackElement(element.id);
-            toast("Gap score updated", { description: "A lattice strut is filling in." });
+            void completeStackElement(element.id)
+              .then(() => {
+                toast("Saved to Evidence Pipeline", {
+                  description: "Gap score and attribute progress will refresh.",
+                });
+              })
+              .catch(() => {
+                setDone(false);
+                toast.error("Could not save completion — try again.");
+              });
           }}
           className="rounded-full bg-[#111111] px-5 py-2.5 text-xs font-medium text-[#FCFCFA] transition-all hover:bg-[#D97706] disabled:opacity-50"
         >

@@ -62,7 +62,16 @@ def advance_turn(
             done=False,
         )
 
-    attributes = _identity_agent.extract_attributes(state, llm_provider)
+    try:
+        attributes = _identity_agent.extract_attributes(state, llm_provider)
+    except Exception:
+        # Budget/LLM/schema failures must not brick Mirror Interview extraction.
+        # Prefer the agent's deterministic degraded Declared Self over a 500.
+        from app.schemas.identity import IdentityAttribute
+
+        fallback = _identity_agent._fallback_extraction_dict()
+        attributes = [IdentityAttribute.model_validate(a) for a in fallback["attributes"]]
+
     draft = twin_repository.upsert_draft(db, user_id, attributes)
     onboarding_repository.mark_completed(db, session_id)
 
