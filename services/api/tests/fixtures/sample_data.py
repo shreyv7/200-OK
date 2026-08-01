@@ -180,6 +180,33 @@ def sample_active_stack_for_variants() -> IdentityStack:
     return sample_prior_stack_for_replacement()
 
 
+def sample_catalog_items() -> list["CatalogItem"]:
+    from app.services.recommendation.catalog import CatalogItem, FixtureCatalogSource
+
+    return FixtureCatalogSource().fetch(bottleneck="execution", stage="early")
+
+
+def sample_offbottleneck_catalog() -> list["CatalogItem"]:
+    from app.services.recommendation.catalog import CatalogItem
+
+    return [
+        CatalogItem(
+            id="story-off",
+            type="growth_story",
+            title="Generic motivation",
+            tags={"bottleneck": "discipline", "stage": "late", "outcome": "motivation"},
+            popularity=99999.0,
+        )
+    ]
+
+
+def sample_decision_packet_with_stage(*, stage: str = "early") -> DecisionPacket:
+    from app.services.recommendation.stage_feature import ranking_features_for_stage
+
+    packet = sample_decision_packet_with_bottleneck(bottleneck="execution")
+    return packet.model_copy(update={"rankingFeatures": ranking_features_for_stage(stage)})
+
+
 def sample_onboarding_confirm_event(
     *,
     with_gap_snapshot: bool = True,
