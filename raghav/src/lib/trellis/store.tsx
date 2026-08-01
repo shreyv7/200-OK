@@ -40,6 +40,14 @@ export interface BottleneckView {
   evidence: string[];
 }
 
+export interface SelectedPersona {
+  id: string;
+  title: string;
+  roleLabel: string;
+  bottleneckLabel: string;
+  attributeLabels: [string, string];
+}
+
 export interface TrellisContextType {
   gap: Gap;
   stack: StackElement[];
@@ -78,6 +86,9 @@ export interface TrellisContextType {
   liveReady: boolean;
   addEvidenceEvent: (event: Omit<EvidenceEvent, "id">) => void;
   triggerPulse: () => void;
+  /** The active Future-Me persona the user selected during onboarding. */
+  selectedPersona: SelectedPersona;
+  selectPersona: (id: string) => void;
 }
 
 const MEDIA_INTERVENTION: InterventionCard = {
@@ -97,6 +108,47 @@ const MICRO_ACTION_INTERVENTION: InterventionCard = {
     "Media prompts failed three times, so the system switched lenses: a small active rep instead of more input.",
   duration: "1 min",
 };
+
+// ---------------------------------------------------------------------------
+// Persona catalogue — mirrors PERSONA_OPTIONS in onboarding.tsx
+// ---------------------------------------------------------------------------
+export const PERSONA_CATALOGUE: SelectedPersona[] = [
+  {
+    id: "ai_builder",
+    title: "AI Product Builder & Founder",
+    roleLabel: "Founding Engineer",
+    bottleneckLabel: "Shipping Velocity",
+    attributeLabels: ["System Architect", "Public Shipping"],
+  },
+  {
+    id: "keynote_speaker",
+    title: "Keynote Speaker & Public Advocate",
+    roleLabel: "Public Speaker",
+    bottleneckLabel: "Stage Confidence",
+    attributeLabels: ["Public Speaking", "Narrative Clarity"],
+  },
+  {
+    id: "technical_author",
+    title: "Technical Author & Researcher",
+    roleLabel: "Technical Writer",
+    bottleneckLabel: "Publishing Consistency",
+    attributeLabels: ["Deep Research", "Written Output"],
+  },
+  {
+    id: "product_designer",
+    title: "Product Designer & UI Creator",
+    roleLabel: "Product Designer",
+    bottleneckLabel: "Portfolio Gap",
+    attributeLabels: ["Design Systems", "User Empathy"],
+  },
+  {
+    id: "polymath",
+    title: "Polymath & Discipline Scholar",
+    roleLabel: "Polymath Scholar",
+    bottleneckLabel: "Integration Depth",
+    attributeLabels: ["Cross-Domain Synthesis", "Deep Work"],
+  },
+];
 
 const defaultContext: TrellisContextType = {
   gap: {
@@ -294,6 +346,8 @@ const defaultContext: TrellisContextType = {
   liveReady: false,
   addEvidenceEvent: () => {},
   triggerPulse: () => {},
+  selectedPersona: PERSONA_CATALOGUE[0]!,
+  selectPersona: () => {},
 };
 
 function familyFromCard(card: InterventionCard): string {
@@ -320,6 +374,12 @@ export function TrellisProvider({ children }: { children: ReactNode }) {
   const [liveReady, setLiveReady] = useState(false);
   const [identityUpdated, setIdentityUpdated] = useState(false);
   const [pulsedStruts, setPulsedStruts] = useState<string[]>(defaultContext.pulsedStruts);
+  const [selectedPersona, setSelectedPersona] = useState<SelectedPersona>(PERSONA_CATALOGUE[0]!);
+
+  const selectPersona = useCallback((id: string) => {
+    const found = PERSONA_CATALOGUE.find((p) => p.id === id);
+    if (found) setSelectedPersona(found);
+  }, []);
 
   const nextIntervention = useMemo(
     () => (unlearned ? MICRO_ACTION_INTERVENTION : MEDIA_INTERVENTION),
@@ -560,6 +620,8 @@ export function TrellisProvider({ children }: { children: ReactNode }) {
     liveReady,
     addEvidenceEvent,
     triggerPulse,
+    selectedPersona,
+    selectPersona,
   };
 
   return <TrellisContext.Provider value={value}>{children}</TrellisContext.Provider>;
