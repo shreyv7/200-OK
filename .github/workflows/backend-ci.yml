@@ -1,0 +1,38 @@
+name: backend-ci
+
+on:
+  push:
+    branches: ["main", "backend", "m0", "m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"]
+    paths:
+      - "services/api/**"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    paths:
+      - "services/api/**"
+      - ".github/workflows/backend-ci.yml"
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/api
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Test
+        env:
+          AUTH_BYPASS: "true"
+          ENV: local
+          DATABASE_URL: "sqlite:///./ci_test.db"
+        run: pytest -q
