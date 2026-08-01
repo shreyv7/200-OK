@@ -12,11 +12,16 @@ class Settings(BaseSettings):
 
     env: str = "local"
     auth_bypass: bool = False
+    # Only used when ENV=local AND AUTH_BYPASS=true (pytest / local smoke).
+    # Never referenced by seed/prewarm unless ALLOW_DEMO_SEED / PREWARM_USER_ID set.
     demo_user_id: str = "demo-user-aarav"
+    # Explicit opt-in for the Aarav seed script (A2/A5 — no silent prod seeding).
+    allow_demo_seed: bool = False
 
     database_url: str = "postgresql+psycopg://trellis:trellis@localhost:5432/trellis"
     redis_url: str | None = "redis://localhost:6379/0"
 
+    clerk_secret_key: str | None = None
     clerk_jwks_url: str | None = None
     clerk_issuer: str | None = None
     # Optional JWT `aud` (set when your Clerk session template includes audience).
@@ -26,6 +31,8 @@ class Settings(BaseSettings):
         "http://localhost:8080,http://127.0.0.1:8080,"
         "http://localhost:5173,http://127.0.0.1:5173"
     )
+    # Optional: prewarm a specific user stack (never defaults to demo_user_id).
+    prewarm_user_id: str | None = None
 
     @property
     def clerk_authorized_party_list(self) -> list[str]:

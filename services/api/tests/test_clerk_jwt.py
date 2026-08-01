@@ -11,7 +11,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from sqlalchemy import select
 
 from app.core.config import Settings
-from app.core.security import get_current_user_id
+from app.core.security import get_current_user, get_current_user_id
 from app.models.user import User
 from app.services.authentication.clerk import (
     clear_jwks_client_cache,
@@ -35,17 +35,10 @@ def rsa_keypair():
 def patch_jwks(monkeypatch: pytest.MonkeyPatch, rsa_keypair):
     private_key, public_key = rsa_keypair
 
-    class _Key:
-        key = public_key
-
-    class _Client:
-        def get_signing_key_from_jwt(self, _token: str) -> _Key:
-            return _Key()
-
     clear_jwks_client_cache()
     monkeypatch.setattr(
-        "app.services.authentication.clerk._jwks_client",
-        lambda _url: _Client(),
+        "app.services.authentication.clerk._signing_key_for_token",
+        lambda _token, _url: public_key,
     )
     return private_key
 
@@ -107,18 +100,16 @@ def test_verify_requires_jwks_config(patch_jwks) -> None:
         verify_clerk_session_token(token, _settings(clerk_jwks_url=None, clerk_issuer=None))
 
 
-def test_get_current_user_id_bypass_local_only() -> None:
+def test_get_current_user_bypass_local_only(db_session) -> None:
     settings = Settings(env="local", auth_bypass=True, demo_user_id="demo-user-aarav")
-    assert (
-        get_current_user_id(authorization=None, settings=settings, db=None)  # type: ignore[arg-type]
-        == "demo-user-aarav"
-    )
+    user = get_current_user(authorization=None, settings=settings, db=db_session)
+    assert user.id == "demo-user-aarav"
 
 
-def test_get_current_user_id_ignores_bypass_outside_local() -> None:
+def test_get_current_user_ignores_bypass_outside_local(db_session) -> None:
     settings = Settings(env="prod", auth_bypass=True)
     with pytest.raises(Exception) as excinfo:
-        get_current_user_id(authorization=None, settings=settings, db=None)  # type: ignore[arg-type]
+        get_current_user(authorization=None, settings=settings, db=db_session)
     assert excinfo.value.status_code == 401
 
 
@@ -126,28 +117,29 @@ def test_maps_sub_to_internal_user_id(patch_jwks, db_session) -> None:
     token = _mint(patch_jwks, sub="clerk_sub_integration")
     settings = _settings(auth_bypass=False)
 
-    user_id = get_current_user_id(
+    user = get_current_user(
         authorization=f"Bearer {token}",
         settings=settings,
         db=db_session,
     )
-    assert user_id
+    assert user.id
     row = db_session.scalar(select(User).where(User.clerk_subject == "clerk_sub_integration"))
     assert row is not None
-    assert row.id == user_id
+    assert row.id == user.id
+    assert get_current_user_id(user=user) == user.id
 
-    again = get_current_user_id(
+    again = get_current_user(
         authorization=f"Bearer {token}",
         settings=settings,
         db=db_session,
     )
-    assert again == user_id
+    assert again.id == user.id
 
 
 def test_invalid_token_returns_401(patch_jwks, db_session) -> None:
     settings = _settings(auth_bypass=False)
     with pytest.raises(Exception) as excinfo:
-        get_current_user_id(
+        get_current_user(
             authorization="Bearer not-a-jwt",
             settings=settings,
             db=db_session,
@@ -158,5 +150,11 @@ def test_invalid_token_returns_401(patch_jwks, db_session) -> None:
 def test_missing_bearer_returns_401(db_session) -> None:
     settings = _settings(auth_bypass=False)
     with pytest.raises(Exception) as excinfo:
-        get_current_user_id(authorization=None, settings=settings, db=db_session)
+        get_current_user(authorization=None, settings=settings, db=db_session)
     assert excinfo.value.status_code == 401
+
+
+def test_verify_accepts_azp_equal_to_issuer(patch_jwks) -> None:
+    token = _mint(patch_jwks, azp=ISSUER)
+    claims = verify_clerk_session_token(token, _settings())
+    assert claims["sub"] == "user_clerk_abc"

@@ -6,6 +6,8 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.repositories import twin_repository
 from app.schemas.identity import IdentityAttribute
+from tests.conftest import ensure_user
+
 
 client = TestClient(app)
 
@@ -52,6 +54,7 @@ def test_confirm_draft_promotes_to_active_with_balanced_weights(db_session) -> N
     # Uses an isolated user_id (not the shared AUTH_BYPASS demo user) so this
     # doesn't change what other tests' `GET /identity` sees for the demo user.
     user_id = "user-confirm-isolated"
+    ensure_user(db_session, user_id)
     attributes = [IdentityAttribute.model_validate(a) for a in _VALID_ATTRIBUTES]
 
     twin_repository.upsert_draft(db_session, user_id, attributes)
@@ -66,6 +69,7 @@ def test_confirm_draft_raises_on_unbalanced_weights(db_session) -> None:
     from app.repositories.twin_repository import WeightSumError
 
     user_id = "user-confirm-unbalanced"
+    ensure_user(db_session, user_id)
     attributes = [IdentityAttribute.model_validate(a) for a in _UNBALANCED_ATTRIBUTES]
     twin_repository.upsert_draft(db_session, user_id, attributes)
 

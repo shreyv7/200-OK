@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from app.repositories import budget_repository
+from tests.conftest import ensure_user
 
 
 def test_record_intervention_delivered_increments_count(db_session) -> None:
     user_id = "user-budget-test"
+    ensure_user(db_session, user_id)
     budget_repository.get_or_create(db_session, user_id)
 
     row = budget_repository.record_intervention_delivered(db_session, user_id)

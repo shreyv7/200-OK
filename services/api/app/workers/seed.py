@@ -251,6 +251,13 @@ def _ensure_demo_calendar_events(session, user_id: str) -> bool:
 
 
 def main() -> None:
+    settings = get_settings()
+    if not settings.allow_demo_seed:
+        raise SystemExit(
+            "Refusing to seed demo-user-aarav. Set ALLOW_DEMO_SEED=true explicitly "
+            "(local/demo only — never in staging/prod)."
+        )
+
     session = SessionLocal()
     try:
         user = _upsert_demo_user(session)

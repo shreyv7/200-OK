@@ -4,13 +4,17 @@ import os
 
 import pytest
 
-# Force local bypass for the suite so tests never need live Clerk credentials.
-# Must be set before app modules that read Settings at import time.
+# Isolate the suite from the local app DB. Must be set before app.core.db imports
+# — otherwise pytest drop_all wipes the running Trellis schema.
 os.environ.setdefault("ENV", "local")
 os.environ["AUTH_BYPASS"] = "true"
+os.environ["DATABASE_URL"] = (
+    "postgresql+psycopg://trellis:trellis@localhost:5432/trellis_test"
+)
 
 from app.core.db import SessionLocal, engine
 from app.models import Base
+from app.models.user import User
 
 
 @pytest.fixture(autouse=True, scope="session")
@@ -25,6 +29,10 @@ def _prepare_schema():
 def _force_auth_bypass(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ENV", "local")
     monkeypatch.setenv("AUTH_BYPASS", "true")
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql+psycopg://trellis:trellis@localhost:5432/trellis_test",
+    )
 
 
 @pytest.fixture()
@@ -34,3 +42,14 @@ def db_session():
         yield session
     finally:
         session.close()
+
+
+def ensure_user(db, user_id: str) -> User:
+    """Insert a users row when tests write FK-scoped tables directly."""
+    user = db.get(User, user_id)
+    if user is None:
+        user = User(id=user_id, capacity=100.0)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    return user

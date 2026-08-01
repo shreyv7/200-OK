@@ -8,6 +8,8 @@ from app.main import app
 from app.repositories import evolution_repository, twin_repository
 from app.schemas.evolution import IdentityEvolutionProposal, ProposedChange
 from app.schemas.identity import IdentityAttribute
+from tests.conftest import ensure_user
+
 
 client = TestClient(app)
 
@@ -30,6 +32,7 @@ def test_accept_applies_diff_not_a_flat_replace(db_session) -> None:
     # avoid mutating the shared demo user's identity that other test files
     # (e.g. M2's test_identity_endpoint.py) depend on.
     user_id = "user-evolution-accept"
+    ensure_user(db_session, user_id)
     twin_repository.create_version(
         db_session,
         user_id=user_id,
@@ -80,6 +83,7 @@ def test_accept_applies_diff_not_a_flat_replace(db_session) -> None:
 
 def test_reject_leaves_identity_unchanged(db_session) -> None:
     user_id = "user-evolution-reject"
+    ensure_user(db_session, user_id)
     twin_repository.create_version(
         db_session,
         user_id=user_id,

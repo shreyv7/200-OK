@@ -6,6 +6,8 @@ from app.integrations.mcp.github.adapter import FixtureGithubAdapter
 from app.integrations.mcp.trellis.adapter import FixtureTrellisAdapter
 from app.schemas.evidence import RawMCPPayload
 from app.services.evidence import service as evidence_service
+from tests.conftest import ensure_user
+
 
 
 def test_github_adapter_normalizes_commit_fixture() -> None:
@@ -68,6 +70,7 @@ def test_trellis_adapter_passive_item_matches_scoring_constants() -> None:
 
 
 def test_adapter_output_flows_through_ingest_pipeline(db_session) -> None:
+    ensure_user(db_session, "u-adapter-pipeline")
     adapter = FixtureGithubAdapter()
     raw = RawMCPPayload(
         sourceProvider="github",
