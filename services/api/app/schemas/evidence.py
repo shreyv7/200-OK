@@ -28,3 +28,18 @@ class EvidenceEvent(BaseModel):
 class RawMCPPayload(BaseModel):
     sourceProvider: SourceProvider
     rawPayload: dict[str, Any]
+
+
+class EvidenceIngestRequest(BaseModel):
+    """POST /api/v1/evidence body. Server generates `id` and the dedupe hash."""
+
+    userId: str
+    timestamp: datetime
+    source: SourceProvider
+    type: str
+    category: EventCategory
+    identityAttributeIds: list[str] = Field(default_factory=list)
+    value: float
+    baseWeight: float
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    simulated: bool = False
