@@ -10,8 +10,13 @@ def _fixture_invalidate_enabled() -> bool:
 
 
 def coordinator_node(state: dict[str, Any]) -> dict[str, Any]:
+    trigger = state.get("trigger", "")
     packet = state.get("decision_packet") or {}
-    invalidate = bool(packet.get("invalidateStack")) or _fixture_invalidate_enabled()
+    invalidate = (
+        bool(packet.get("invalidateStack"))
+        or _fixture_invalidate_enabled()
+        or trigger == "onboarding.confirmed"
+    )
     invalidated_element_ids = list(packet.get("invalidatedElementIds") or [])
     hypothesis_id = state.get("hypothesis_id") or f"hyp-{state.get('run_id', 'pending')}"
 
