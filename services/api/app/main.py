@@ -12,6 +12,7 @@ from app.api.dashboard import router as dashboard_router
 from app.api.evidence import router as evidence_router
 from app.api.health import router as health_router
 from app.api.identity import router as identity_router
+from app.api.integrations import router as integrations_router
 from app.api.ledger import router as ledger_router
 from app.api.lattice import router as lattice_router
 from app.api.onboarding import router as onboarding_router
@@ -30,6 +31,8 @@ app.include_router(health_router)  # unprefixed convenience for liveness probes
 app.include_router(evidence_router, prefix="/api/v1")
 app.include_router(dashboard_router, prefix="/api/v1")
 app.include_router(identity_router, prefix="/api/v1")
+app.include_router(integrations_router, prefix="/api/v1")
+
 app.include_router(lattice_router, prefix="/api/v1")
 app.include_router(onboarding_router, prefix="/api/v1")
 app.include_router(stack_router, prefix="/api/v1")
