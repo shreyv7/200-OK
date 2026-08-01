@@ -3,10 +3,11 @@ from __future__ import annotations
 from app.core.config import get_settings
 from app.models.intervention import InterventionModel
 from app.models.user import User
-from app.repositories import intervention_repository, ledger_repository
+from app.repositories import evolution_repository, intervention_repository, ledger_repository
 from app.workers.seed import (
     DEMO_HYPOTHESIS_FAMILY,
     _ensure_demo_dismissal_history,
+    _ensure_demo_evolution_proposal,
     _ensure_prepared_intervention,
     _generate_history,
     _upsert_confirmed_twin,
@@ -64,3 +65,15 @@ def test_ensure_demo_dismissal_history_seeds_two_and_is_idempotent(db_session) -
     second = _ensure_demo_dismissal_history(db_session, user.id)
     assert second == 0
     assert ledger_repository.count_recent_dismissals(db_session, DEMO_HYPOTHESIS_FAMILY, 14) == 2
+
+
+def test_ensure_demo_evolution_proposal_is_idempotent(db_session) -> None:
+    user = _upsert_demo_user(db_session)
+    _upsert_confirmed_twin(db_session, user.id)
+
+    first = _ensure_demo_evolution_proposal(db_session, user.id)
+    assert first is True
+    assert evolution_repository.has_pending_for_user(db_session, user.id) is True
+
+    second = _ensure_demo_evolution_proposal(db_session, user.id)
+    assert second is False

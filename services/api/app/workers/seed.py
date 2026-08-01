@@ -19,7 +19,7 @@ from app.integrations.mcp.trellis.adapter import FixtureTrellisAdapter
 from app.models.user import User
 from app.providers.llm.fake import FakeLLMProvider
 from app.providers.search.fake import FakeSearchProvider
-from app.repositories import intervention_repository, ledger_repository, twin_repository
+from app.repositories import evolution_repository, intervention_repository, ledger_repository, twin_repository
 from app.schemas.evidence import RawMCPPayload
 from app.schemas.identity import DeclaredSelf, IdentityAttribute, IdentityMarker
 from app.services.curation import stack_orchestration
@@ -186,6 +186,33 @@ def _ensure_demo_dismissal_history(session, user_id: str) -> int:
     return 2
 
 
+def _ensure_demo_evolution_proposal(session, user_id: str) -> bool:
+    """Seeds one evolution proposal (prd.md F11 MVP: no live LLM call needed
+    for the demo to have something to accept/reject)."""
+    if evolution_repository.has_pending_for_user(session, user_id):
+        return False
+    evolution_repository.create(
+        session,
+        user_id=user_id,
+        proposed_attributes=_DECLARED_ATTRIBUTES
+        + [
+            IdentityAttribute(
+                id="entrepreneur",
+                label="Startup Founder",
+                weight=0.3,
+                targetWeeklyPoints=15.0,
+                markers=[IdentityMarker(id="ships_product", label="Ships a product update")],
+            )
+        ],
+        cited_evidence_ids=[],
+        rationale=(
+            "You originally wanted to become a public speaker, but your recent "
+            "behavior suggests a growing interest in entrepreneurship."
+        ),
+    )
+    return True
+
+
 def main() -> None:
     session = SessionLocal()
     try:
@@ -195,9 +222,10 @@ def main() -> None:
         prepared = _ensure_prepared_intervention(session, user.id)
         dismissals = _ensure_demo_dismissal_history(session, user.id)
         stories, tools, mentors = seed_catalog(session)
+        evolution_seeded = _ensure_demo_evolution_proposal(session, user.id)
         logger.info(
             "Seed complete: user=%s twin_version=%d inserted_events=%d "
-            "prepared_stack=%s seeded_dismissals=%d catalog=%d/%d/%d",
+            "prepared_stack=%s seeded_dismissals=%d catalog=%d/%d/%d evolution=%s",
             user.id,
             twin.version,
             inserted,
@@ -206,6 +234,7 @@ def main() -> None:
             stories,
             tools,
             mentors,
+            evolution_seeded,
         )
     finally:
         session.close()

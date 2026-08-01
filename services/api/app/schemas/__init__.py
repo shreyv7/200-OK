@@ -3,6 +3,7 @@
 Import surface for AIA/AIS: `from app.schemas import EvidenceEvent, DeclaredSelf, ...`
 """
 
+from app.schemas.agent_run import AgentRunRequest, AgentRunResult, IdentityEvolutionProposal, WeeklyReport
 from app.schemas.bottleneck import BottleneckPacket
 from app.schemas.catalog import GrowthStorySchema, MentorSchema, ToolSchema
 from app.schemas.dashboard import DashboardSummary
@@ -20,6 +21,10 @@ from app.schemas.onboarding import (
 from app.schemas.stack import IdentityStack, InterventionVariant, StackElement, StackExplanation
 
 __all__ = [
+    "AgentRunRequest",
+    "AgentRunResult",
+    "IdentityEvolutionProposal",
+    "WeeklyReport",
     "BottleneckPacket",
     "GrowthStorySchema",
     "ToolSchema",
