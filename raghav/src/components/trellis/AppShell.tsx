@@ -56,9 +56,9 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
   }, [unlearning, clearUnlearning]);
 
   return (
-    <div className="relative min-h-screen bg-background text-foreground selection:bg-foreground selection:text-background flex overflow-x-hidden">
-      {/* Desktop sidebar */}
-      <aside className="relative z-20 hidden w-52 shrink-0 flex-col border-r border-border bg-background/80 backdrop-blur-xl md:flex">
+    <div className="relative flex h-svh overflow-hidden text-foreground selection:bg-foreground selection:text-background">
+      {/* Desktop sidebar — pinned; main column scrolls independently */}
+      <aside className="relative z-20 hidden h-full w-52 shrink-0 flex-col border-r border-border bg-background/80 backdrop-blur-xl md:flex">
         <div className="flex items-center gap-2.5 px-6 py-6">
           <LatticeMark className="h-4 w-4 text-foreground" />
           <span className="font-mono text-[11px] font-semibold tracking-[0.26em] text-foreground uppercase">
@@ -66,7 +66,7 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
           </span>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-0.5 px-2 py-1">
+        <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-1">
           {nav.map((item) => {
             const active = pathname === item.to;
             return (
@@ -96,7 +96,7 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
           })}
         </nav>
 
-        <div className="px-5 py-5 border-t border-border">
+        <div className="shrink-0 px-5 py-5 border-t border-border">
           <div className="flex items-center gap-2.5">
             <UserButton afterSignOutUrl="/" />
             <div className="flex h-6 w-6 items-center justify-center rounded-full bg-foreground text-[10px] font-mono font-medium text-background md:hidden">
@@ -114,8 +114,8 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
         </div>
       </aside>
 
-      <div className="relative z-10 flex min-w-0 flex-1 flex-col pb-20 md:pb-0">
-        <header className="sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-border bg-background/80 px-5 sm:px-8 py-4 backdrop-blur-xl">
+      <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain pb-20 md:pb-0">
+        <header className="sticky top-0 z-30 flex shrink-0 items-center justify-between gap-4 border-b border-border bg-background/80 px-5 sm:px-8 py-4 backdrop-blur-xl">
           <div className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground tracking-[0.16em] uppercase">
             <span className="text-foreground font-medium">TRELLIS</span>
             <span className="opacity-60">/</span>

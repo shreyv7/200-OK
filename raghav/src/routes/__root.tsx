@@ -16,6 +16,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { TrellisProvider } from "../lib/trellis/store";
 import { Toaster } from "../components/ui/sonner";
+import { RibbonBackground } from "../components/trellis/RibbonBackground";
 
 function NotFoundComponent() {
   return (
@@ -177,6 +178,7 @@ function RootComponent() {
       <QueryClientProvider client={queryClient}>
         <ClerkAuthBridge />
         <TrellisProvider>
+          <RibbonBackground />
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />
           <Toaster />

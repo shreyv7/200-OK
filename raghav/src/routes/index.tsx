@@ -30,7 +30,7 @@ const flagshipEase = [0.16, 1, 0.3, 1] as const;
 
 function Landing() {
   return (
-    <div className="relative min-h-screen bg-background text-foreground selection:bg-foreground selection:text-background overflow-x-hidden">
+    <div className="relative min-h-screen text-foreground selection:bg-foreground selection:text-background overflow-x-hidden">
       <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
           <Link
