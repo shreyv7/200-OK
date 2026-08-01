@@ -118,9 +118,20 @@ export function EvidenceEventLog({
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-mono text-[11px] text-[#111111] leading-snug truncate">
-                    {ev.label}
-                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-mono text-[11px] text-[#111111] leading-snug truncate">
+                      {ev.label}
+                    </p>
+                    {(ev as any).simulated === false || (ev as any).isSimulated === false ? (
+                      <span className="inline-flex items-center rounded border border-emerald-600/30 bg-emerald-500/10 px-1.5 py-0.2 text-[8.5px] font-semibold text-emerald-600 shrink-0">
+                        LIVE
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center rounded border border-neutral-300 bg-neutral-100 px-1.5 py-0.2 text-[8.5px] font-medium text-neutral-500 shrink-0">
+                        SIM
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span
                       className="font-mono text-[9.5px] font-medium"
@@ -138,6 +149,7 @@ export function EvidenceEventLog({
                   </div>
                 </div>
               </motion.div>
+
             );
           })}
         </AnimatePresence>
