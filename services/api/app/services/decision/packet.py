@@ -42,6 +42,16 @@ class CatalogFeatures:
 
 
 @dataclass
+class LeverageFeatures:
+    has_upcoming_event: bool
+    event_id: str
+    event_title: str
+    days_until_event: float
+    relevant_attribute_id: str
+    suggested_prep_type: str  # "rehearsal" | "quick_review" | "mindset"
+
+
+@dataclass
 class DecisionPacket:
     user_id: str
     gap_score: int
@@ -55,6 +65,7 @@ class DecisionPacket:
     should_recurate: bool = False
     curation_intensity: str = "full"  # "full" | "light" | "micro"
     catalog_features: Optional[CatalogFeatures] = None
+    leverage_features: Optional[LeverageFeatures] = None
 
 
 def build_decision_packet(
@@ -68,6 +79,7 @@ def build_decision_packet(
     should_recurate: Optional[bool] = None,
     curation_intensity: str = "full",
     catalog_features: Optional[CatalogFeatures] = None,
+    leverage_features: Optional[LeverageFeatures] = None,
 ) -> DecisionPacket:
     """Builds a DecisionPacket given GapResult and optional prior Gap score."""
     gap_delta = (gap_result.gap_score - prior_gap_score) if prior_gap_score is not None else 0
@@ -89,4 +101,5 @@ def build_decision_packet(
         should_recurate=should_recurate,
         curation_intensity=curation_intensity,
         catalog_features=catalog_features,
+        leverage_features=leverage_features,
     )

@@ -46,6 +46,13 @@ from app.services.identity.catalog_features import (
     get_stage_from_gap,
     trigger_identity_embedding,
 )
+from app.services.identity.leverage_features import (
+    extract_leverage_features,
+)
+from app.services.identity.outside_voice import (
+    OutsideVoiceRecommendation,
+    evaluate_outside_voice_lens,
+)
 from app.services.identity.recompute import (
     recompute_user_gap,
 )
@@ -61,6 +68,9 @@ from app.schemas.report import (
 from app.schemas.evolution import (
     IdentityEvolutionProposal,
     ProposedChange,
+)
+from app.services.decision.packet import (
+    LeverageFeatures,
 )
 from app.services.identity.confirmation import (
     InterviewTurn,
@@ -97,6 +107,10 @@ __all__ = [
     "extract_catalog_features",
     "get_stage_from_gap",
     "trigger_identity_embedding",
+    "LeverageFeatures",
+    "extract_leverage_features",
+    "OutsideVoiceRecommendation",
+    "evaluate_outside_voice_lens",
     "recompute_user_gap",
     "generate_weekly_report",
     "propose_identity_evolution",

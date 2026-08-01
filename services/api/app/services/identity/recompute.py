@@ -15,6 +15,7 @@ from app.services.identity.bottleneck_v1 import diagnose_bottleneck_v1
 from app.services.identity.catalog_features import extract_catalog_features
 from app.services.identity.growth_decision import evaluate_growth_decision
 from app.services.identity.kpi import KPISnapshot, build_kpi_snapshot
+from app.services.identity.leverage_features import extract_leverage_features
 from app.services.identity.sanitizer import get_event_delta_days
 from app.services.identity.scoring.gap import (
     AttrInput,
@@ -36,6 +37,7 @@ def recompute_user_gap(
     llm_provider: Optional[Any] = None,
     capacity_pct: int = 100,
     prior_bottleneck_label: Optional[str] = None,
+    calendar_events: Optional[List[Any]] = None,
 ) -> Tuple[GapResult, KPISnapshot, DecisionPacket]:
     """Recomputes deterministic GapResult, KPISnapshot, and DecisionPacket for user_id."""
     if ref_time is None:
@@ -100,7 +102,10 @@ def recompute_user_gap(
     # 4. Catalog features extraction for AIS catalog ranking (M6)
     catalog_features = extract_catalog_features(gap_result, bottleneck_candidates)
 
-    # 5. DecisionPacket assembly
+    # 5. Leverage features extraction for calendar proximity (M8)
+    leverage_features = extract_leverage_features(calendar_events, declared_self, ref_time)
+
+    # 6. DecisionPacket assembly
     decision_packet = build_decision_packet(
         user_id=user_id,
         gap_result=gap_result,
@@ -112,6 +117,7 @@ def recompute_user_gap(
         should_recurate=growth_decision.should_recurate,
         curation_intensity=growth_decision.curation_intensity,
         catalog_features=catalog_features,
+        leverage_features=leverage_features,
     )
 
     return gap_result, kpi_snapshot, decision_packet
