@@ -1,6 +1,6 @@
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useMemo } from "react";
-import { calculateGapScore } from "@/lib/trellis/gapScore";
+import { calculateAlignmentAt } from "@/lib/trellis/gapScore";
 import type { DeclaredSelf, EvidenceEvent } from "@/lib/trellis/types";
 
 const ALIGNMENT = "#64748B";
@@ -14,14 +14,15 @@ export function TrajectoryChart({
 }: {
   events: EvidenceEvent[];
   declaredSelf: DeclaredSelf;
-  now: Date;
+  now: Date | string;
 }) {
   const series = useMemo(() => {
     const points: { day: string; declared: number; revealed: number }[] = [];
+    const nowMs = new Date(now).getTime();
     for (let d = 20; d >= 0; d--) {
-      const at = new Date(now.getTime() - d * 86_400_000);
+      const at = new Date(nowMs - d * 86_400_000);
       const past = events.filter((e) => new Date(e.occurredAt) <= at);
-      const r = calculateGapScore(past, declaredSelf, at);
+      const r = calculateAlignmentAt(past, declaredSelf, at);
       points.push({
         day: `D${21 - d}`,
         declared: Math.round(40 + (20 - d) * 2.6),

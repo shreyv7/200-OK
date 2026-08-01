@@ -1,7 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { LatticeMark } from "@/components/trellis/Lattice";
-import { LivingTrellisBackground } from "@/components/trellis/LivingTrellisBackground";
-import { LivingIdentityEngine } from "@/components/trellis/LivingIdentityEngine";
 import { EditorialInterventionFlow } from "@/components/trellis/EditorialInterventionFlow";
 import { LatticeDivider } from "@/components/trellis/LatticeDivider";
 import { ArrowRight, ChevronRight } from "lucide-react";
@@ -32,8 +30,6 @@ const flagshipEase = [0.16, 1, 0.3, 1] as const;
 function Landing() {
   return (
     <div className="relative min-h-screen bg-background text-foreground selection:bg-foreground selection:text-background overflow-x-hidden">
-      <LivingTrellisBackground />
-
       <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
           <Link
@@ -66,60 +62,48 @@ function Landing() {
 
       {/* Hero — brand first, one composition */}
       <section className="relative z-10 mx-auto max-w-6xl px-6 pt-16 pb-24 sm:pt-24 sm:pb-32">
-        <div className="grid items-center gap-14 lg:grid-cols-12 lg:gap-10">
-          <motion.div
-            className="lg:col-span-7"
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.85, ease: flagshipEase }}
-          >
-            <p className="font-display text-5xl sm:text-6xl md:text-7xl font-medium tracking-tight text-foreground leading-[0.95]">
-              Trellis
-            </p>
-            <p className="mt-4 font-mono text-[11px] tracking-[0.2em] text-signal uppercase">
-              An agentic growth curator
-            </p>
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.85, ease: flagshipEase }}
+        >
+          <p className="font-display text-5xl sm:text-6xl md:text-7xl font-medium tracking-tight text-foreground leading-[0.95]">
+            Trellis
+          </p>
+          <p className="mt-4 font-mono text-[11px] tracking-[0.2em] text-signal uppercase">
+            An agentic growth curator
+          </p>
 
-            <h1 className="mt-8 max-w-xl text-2xl sm:text-3xl leading-snug font-medium tracking-tight text-foreground/90">
-              Become the self you already described.
-            </h1>
+          <h1 className="mt-8 max-w-xl text-2xl sm:text-3xl leading-snug font-medium tracking-tight text-foreground/90">
+            Become the self you already described.
+          </h1>
 
-            <p className="mt-5 max-w-lg text-base leading-relaxed text-muted-foreground sm:text-lg">
-              There is who you say you want to become, and what your week actually
-              contains. Trellis measures that distance — then curates the smallest
-              stack that closes it.
-            </p>
+          <p className="mt-5 max-w-lg text-base leading-relaxed text-muted-foreground sm:text-lg">
+            There is who you say you want to become, and what your week actually
+            contains. Trellis measures that distance — then curates the smallest
+            stack that closes it.
+          </p>
 
-            <div className="mt-10 flex flex-wrap items-center gap-6">
-              <Link
-                to="/onboarding"
-                className="group inline-flex items-center gap-3 rounded-full bg-foreground px-7 py-3.5 text-sm font-medium text-background transition-all hover:bg-foreground/90"
-              >
-                <span>Begin the Mirror Interview</span>
-                <ArrowRight
-                  className="h-4 w-4 transition-transform group-hover:translate-x-1"
-                  strokeWidth={1.75}
-                />
-              </Link>
-              <Link
-                to="/feed"
-                className="group relative inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <span>See the Catch</span>
-                <ArrowRight className="h-3.5 w-3.5 opacity-40 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
-              </Link>
-            </div>
-          </motion.div>
-
-          <motion.div
-            className="lg:col-span-5"
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.95, delay: 0.15, ease: flagshipEase }}
-          >
-            <LivingIdentityEngine />
-          </motion.div>
-        </div>
+          <div className="mt-10 flex flex-wrap items-center gap-6">
+            <Link
+              to="/onboarding"
+              className="group inline-flex items-center gap-3 rounded-full bg-foreground px-7 py-3.5 text-sm font-medium text-background transition-all hover:bg-foreground/90"
+            >
+              <span>Begin the Mirror Interview</span>
+              <ArrowRight
+                className="h-4 w-4 transition-transform group-hover:translate-x-1"
+                strokeWidth={1.75}
+              />
+            </Link>
+            <Link
+              to="/feed"
+              className="group relative inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <span>See the Catch</span>
+              <ArrowRight className="h-3.5 w-3.5 opacity-40 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
+            </Link>
+          </div>
+        </motion.div>
       </section>
 
       <div className="mx-auto max-w-5xl px-6">

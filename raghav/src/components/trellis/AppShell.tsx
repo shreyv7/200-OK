@@ -4,7 +4,6 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "motion/react";
 import { FileText, LayoutDashboard, Rss, ScrollText, Settings } from "lucide-react";
 import { LatticeMark } from "./Lattice";
-import { LivingTrellisBackground } from "./LivingTrellisBackground";
 import { CapacitySlider } from "./CapacitySlider";
 import { SimulatorDrawer } from "./SimulatorDrawer";
 import { useTrellis } from "@/lib/trellis/store";
@@ -58,8 +57,6 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
 
   return (
     <div className="relative min-h-screen bg-background text-foreground selection:bg-foreground selection:text-background flex overflow-x-hidden">
-      <LivingTrellisBackground />
-
       {/* Desktop sidebar */}
       <aside className="relative z-20 hidden w-52 shrink-0 flex-col border-r border-border bg-background/80 backdrop-blur-xl md:flex">
         <div className="flex items-center gap-2.5 px-6 py-6">

@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, Check } from "lucide-react";
 
 import { RequireAuth } from "@/authentication";
-import { LivingTrellisBackground } from "@/components/trellis/LivingTrellisBackground";
 import { LatticeMark } from "@/components/trellis/Lattice";
 import { ApiError } from "@/lib/api/client";
 import * as api from "@/lib/api/endpoints";
@@ -224,8 +223,6 @@ function Onboarding() {
 
   return (
     <div className="relative min-h-screen bg-background text-foreground overflow-x-hidden">
-      <LivingTrellisBackground />
-
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-5 py-4">
           <div className="flex items-center gap-2.5">
@@ -398,10 +395,6 @@ function Onboarding() {
                     </div>
                   </div>
                 ))}
-              </div>
-
-              <div className="rounded-2xl border border-border bg-secondary/60 p-4 font-mono text-[11px] text-muted-foreground">
-                Extracted for your signed-in account · consent moment · no Aarav seed
               </div>
 
               <div className="flex flex-wrap gap-3 pt-2">

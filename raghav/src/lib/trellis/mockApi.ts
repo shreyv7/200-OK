@@ -4,9 +4,15 @@
 
 export const mock = {
   currentBottleneck: {
-    title: "Focus Drift",
-    description: "High passive consumption relative to output over the last 7 days",
-    severity: "medium",
+    name: "Focus Drift",
+    diagnosis:
+      "High passive consumption relative to output over the last 7 days.",
+    confidence: "medium",
+    evidence: [
+      "Scroll sessions outweigh creation blocks",
+      "Few ship markers in the evidence window",
+      "Capacity is available but unused for public reps",
+    ],
   },
   feedCards: [
     {

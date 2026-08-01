@@ -9,7 +9,10 @@ export function StackCard({ element }: { element: StackElement }) {
   const { tier, dismissStackElement, completeStackElement } = useTrellis();
   const [open, setOpen] = useState(false);
   const [done, setDone] = useState(false);
-  const variant = element.variants[tier];
+  const variants = element.variants ?? {};
+  const variant = variants[tier] ?? Object.values(variants)[0];
+
+  if (!variant) return null;
 
   return (
     <motion.article

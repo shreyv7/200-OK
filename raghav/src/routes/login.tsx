@@ -4,7 +4,6 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { RedirectIfAuthenticated } from "@/authentication";
 import { clerkAppearance } from "@/authentication/clerkAppearance";
 import { LatticeMark } from "@/components/trellis/Lattice";
-import { LivingTrellisBackground } from "@/components/trellis/LivingTrellisBackground";
 
 type LoginSearch = {
   redirect?: string | undefined;
@@ -32,7 +31,6 @@ function LoginPage() {
   return (
     <RedirectIfAuthenticated fallback={forceRedirectUrl}>
       <div className="relative flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12 overflow-hidden">
-        <LivingTrellisBackground />
         <div className="relative z-10 mb-8 flex items-center gap-3">
           <LatticeMark className="h-5 w-5 text-foreground" />
           <Link

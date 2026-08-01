@@ -45,7 +45,7 @@ export function GapBreakdownSheet({
                 </tr>
               </thead>
               <tbody className="divide-y divide-black/[0.04]">
-                {gap.breakdown.map((b) => (
+                {(gap.breakdown ?? []).map((b) => (
                   <tr key={b.attributeId} className="hover:bg-[#FAFAF8]/50">
                     <td className="p-3.5 font-medium text-[#111111]">{b.label}</td>
                     <td className="num p-3.5 text-right text-[#666666]">{b.weight.toFixed(2)}</td>
@@ -62,8 +62,8 @@ export function GapBreakdownSheet({
           <div>
             <p className="label-eyebrow">Marker-level evidence</p>
             <div className="mt-3 space-y-2.5">
-              {gap.breakdown.flatMap((b) =>
-                b.markerEvidence.map((m) => (
+              {(gap.breakdown ?? []).flatMap((b) =>
+                (b.markerEvidence ?? []).map((m) => (
                   <div key={`${b.attributeId}${m.markerId}`} className="flex items-center gap-3">
                     <span className="w-48 shrink-0 truncate font-mono text-xs text-[#666666]">
                       {m.label}

@@ -141,7 +141,7 @@ function Dashboard() {
                 {bottleneck.diagnosis}
               </p>
               <ul className="mt-4 space-y-2">
-                {bottleneck.evidence.map((e) => (
+                {(bottleneck.evidence ?? []).map((e) => (
                   <li
                     key={e}
                     className="flex items-start gap-2 text-xs text-muted-foreground font-mono"
@@ -190,7 +190,7 @@ function Dashboard() {
 
         <section className="rounded-3xl border border-border bg-card p-6 sm:p-8 space-y-5">
           <p className="label-eyebrow">Attribute divergence</p>
-          {gap.breakdown.map((attr) => (
+          {(gap.breakdown ?? []).map((attr) => (
             <div key={attr.attributeId} className="space-y-1.5">
               <div className="flex items-center justify-between font-mono text-[11px]">
                 <span className="text-foreground font-medium">{attr.label}</span>

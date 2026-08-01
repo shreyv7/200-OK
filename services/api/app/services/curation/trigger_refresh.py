@@ -16,9 +16,9 @@ def enqueue_tier2_stack_refresh(user_id: str) -> None:
     if not user_id:
         raise ValueError("enqueue_tier2_stack_refresh requires authenticated user_id")
 
-    from app.workers.tier2_tasks import curate_tier2_background_task
-
     try:
+        from app.workers.tier2_tasks import curate_tier2_background_task
+
         curate_tier2_background_task.delay(user_id)
     except Exception as exc:  # noqa: BLE001 — never fail the Tier-0/1 request path
         logger.warning("Failed to enqueue Tier-2 refresh for %s: %s", user_id, exc)

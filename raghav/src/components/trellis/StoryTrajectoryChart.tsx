@@ -8,7 +8,7 @@
  */
 import { useMemo, useState, useRef, useEffect } from "react";
 import { motion } from "motion/react";
-import { calculateGapScore } from "@/lib/trellis/gapScore";
+import { calculateAlignmentAt } from "@/lib/trellis/gapScore";
 import type { DeclaredSelf, EvidenceEvent } from "@/lib/trellis/types";
 
 const W = 640;
@@ -70,7 +70,7 @@ export function StoryTrajectoryChart({
 }: {
   events: EvidenceEvent[];
   declaredSelf: DeclaredSelf;
-  now: Date;
+  now: Date | string;
 }) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [pathLength, setPathLength] = useState<number | null>(null);
@@ -79,10 +79,11 @@ export function StoryTrajectoryChart({
   const series = useMemo<DayPoint[]>(() => {
     const pts: DayPoint[] = [];
     const DAYS = 21;
+    const nowMs = new Date(now).getTime();
     for (let d = DAYS - 1; d >= 0; d--) {
-      const at = new Date(now.getTime() - d * 86_400_000);
+      const at = new Date(nowMs - d * 86_400_000);
       const pastEvents = events.filter((e) => new Date(e.occurredAt) <= at);
-      const r = calculateGapScore(pastEvents, declaredSelf, at);
+      const r = calculateAlignmentAt(pastEvents, declaredSelf, at);
       const dayEvents = events.filter((e) => {
         const eDate = new Date(e.occurredAt);
         const dayStart = new Date(at); dayStart.setHours(0, 0, 0, 0);

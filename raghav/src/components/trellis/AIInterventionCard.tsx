@@ -58,12 +58,13 @@ export function AIInterventionCard({
   const [reasoning, setReasoning] = useState(false);
   const [wasDismissed, setWasDismissed] = useState(false);
 
-  const variant = element.variants[tier];
+  const variants = element.variants ?? {};
+  const variant = variants[tier] ?? Object.values(variants)[0];
   const impact = deriveImpact(element);
   const confidence = deriveConfidence(element);
   const newAlignment = Math.min(100, currentAlignment + impact.alignmentGain);
 
-  if (wasDismissed) return null;
+  if (wasDismissed || !variant) return null;
 
   return (
     <motion.article
