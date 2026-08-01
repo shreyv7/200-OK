@@ -23,15 +23,44 @@ def test_gemini_without_api_key_raises() -> None:
 def test_gemini_with_api_key_resolves_real_provider() -> None:
     """B1 (docs/work.md): proves LLM_PROVIDER=gemini actually wires up the
     real Gemini SDK client rather than silently falling back to the fake.
-    Uses a placeholder key — genai.configure()/GenerativeModel() are local
-    SDK object construction, no network call happens until generate_structured()."""
+    Uses a placeholder key — genai.Client(...) is local SDK object
+    construction, no network call happens until generate_content()."""
     from app.providers.llm.gemini import GeminiLLMProvider
 
     settings = Settings(
-        llm_provider="gemini", gemini_api_key="test-placeholder-key", gemini_model="gemini-1.5-flash"
+        llm_provider="gemini", gemini_api_key="test-placeholder-key", gemini_model="gemini-2.0-flash"
     )
     provider = get_llm_provider(settings)
     assert isinstance(provider, GeminiLLMProvider)
+
+
+def test_gemini_config_accepts_nested_pydantic_schema() -> None:
+    """Regression test for a real bug found live against Gemini while
+    wiring B1: google.generativeai's response_schema is a flattened
+    OpenAPI-subset proto that raises `ValueError: Unknown field for
+    Schema: $defs` for ANY schema with a nested model — client-side,
+    before any network call — which broke every structured LLM call in
+    this codebase (onboarding extraction, bottleneck diagnosis, weekly
+    report, evolution proposals all nest models). google.genai's
+    response_json_schema field explicitly supports $defs/$ref instead.
+    This proves the schema our own onboarding extraction actually sends
+    (attributes -> markers, i.e. real $defs/$ref) builds a valid request
+    config without that exception — the failure mode this test guards
+    against needs no network call to reproduce, so this stays a fast
+    offline unit test."""
+    from google.genai import types
+
+    from app.services.identity.onboarding_orchestration import _ExtractionSchema
+
+    schema = _ExtractionSchema.model_json_schema()
+    assert "$defs" in schema  # sanity: this schema is genuinely nested
+
+    config = types.GenerateContentConfig(
+        response_mime_type="application/json",
+        response_json_schema=schema,
+    )
+    assert config.response_json_schema is not None
+    assert "$defs" in config.response_json_schema
 
 
 def test_bedrock_resolves_to_stub_provider() -> None:

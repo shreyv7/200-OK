@@ -54,7 +54,9 @@ class Settings(BaseSettings):
     # so tests/local dev never require live Gemini credentials.
     llm_provider: Literal["fake", "gemini", "bedrock"] = "fake"
     gemini_api_key: str | None = None
-    gemini_model: str = "gemini-1.5-flash"
+    # gemini-1.5-flash 404s against the current v1beta API (retired) —
+    # verified live while wiring B1 (docs/work.md).
+    gemini_model: str = "gemini-2.0-flash"
     bedrock_region: str | None = None
     bedrock_model_id: str | None = None
 
