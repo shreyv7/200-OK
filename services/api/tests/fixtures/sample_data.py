@@ -249,3 +249,59 @@ def sample_report_requested_state() -> dict:
         "evidence_id": None,
         "hypothesis_id": "hyp-report-fixture-001",
     }
+
+
+def sample_partner_profiles() -> list["PartnerProfile"]:
+    from app.services.recommendation.partner_match import PartnerProfile
+
+    return [
+        PartnerProfile(
+            id="partner-1",
+            display_name="Riya S.",
+            stage="early",
+            goal="public speaking",
+            bottleneck="confidence",
+            bio="Building confidence through small speaking reps.",
+        ),
+        PartnerProfile(
+            id="partner-2",
+            display_name="Dev P.",
+            stage="early",
+            goal="shipping projects",
+            bottleneck="execution",
+            bio="Publishing small tools every week.",
+        ),
+        PartnerProfile(
+            id="partner-3",
+            display_name="Amara K.",
+            stage="developing",
+            goal="consistency",
+            bottleneck="discipline",
+            bio="Maintaining a daily build streak.",
+        ),
+        PartnerProfile(
+            id="partner-4",
+            display_name="Jon M.",
+            stage="developing",
+            goal="networking",
+            bottleneck="networking",
+            bio="Reaching out to one new builder weekly.",
+        ),
+        PartnerProfile(
+            id="partner-5",
+            display_name="Sara T.",
+            stage="early",
+            goal="public speaking",
+            bottleneck="execution",
+            bio="Turning tutorials into published talks.",
+        ),
+    ]
+
+
+def sample_partner_user_profile() -> dict[str, str]:
+    return {
+        "stage": "early",
+        "goal": "public speaking",
+        "bottleneck": "execution",
+        "summary": "Wants to publish a first talk and ship consistently.",
+    }
