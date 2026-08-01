@@ -89,7 +89,7 @@ def advance_turn(
             done=False,
         )
 
-    session_row = onboarding_repository.get_session(db, session_id)
+    session_row = onboarding_repository.get_session_for_user(db, session_id, user_id)
     if session_row is None:
         raise ValueError(f"Unknown onboarding session: {session_id}")
 

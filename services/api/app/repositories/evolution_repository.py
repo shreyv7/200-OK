@@ -44,6 +44,18 @@ def get(db, proposal_id: str) -> tuple[IdentityEvolutionProposalModel, IdentityE
     return row, _to_schema(row)
 
 
+def get_for_user(
+    db, proposal_id: str, user_id: str
+) -> tuple[IdentityEvolutionProposalModel, IdentityEvolutionProposal] | None:
+    found = get(db, proposal_id)
+    if found is None:
+        return None
+    row, proposal = found
+    if row.user_id != user_id:
+        return None
+    return row, proposal
+
+
 def has_pending_for_user(db, user_id: str) -> bool:
     stmt = select(IdentityEvolutionProposalModel.id).where(
         IdentityEvolutionProposalModel.user_id == user_id,

@@ -44,7 +44,6 @@ def _ingest_builder_commit() -> None:
     )
     event = _adapter.normalize(raw)
     payload = {
-        "userId": event.userId,
         "timestamp": event.timestamp.isoformat(),
         "source": event.source,
         "type": event.type,

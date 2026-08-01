@@ -174,7 +174,9 @@ def _ensure_demo_dismissal_history(session, user_id: str) -> int:
     """Seeds two prior dismissals (prd.md F7 demo script: the third LIVE
     dismissal on stage crosses DISMISSAL_FAILURE_THRESHOLD=3). Idempotent —
     only inserts if this family has no dismissal history yet."""
-    existing = ledger_repository.count_recent_dismissals(session, DEMO_HYPOTHESIS_FAMILY, 14)
+    existing = ledger_repository.count_recent_dismissals(
+        session, user_id, DEMO_HYPOTHESIS_FAMILY, 14
+    )
     if existing > 0:
         return 0
 
@@ -251,6 +253,13 @@ def _ensure_demo_calendar_events(session, user_id: str) -> bool:
 
 
 def main() -> None:
+    settings = get_settings()
+    if not settings.allow_demo_seed:
+        raise SystemExit(
+            "Refusing to seed demo-user-aarav. Set ALLOW_DEMO_SEED=true explicitly "
+            "(local/demo only — never in staging/prod)."
+        )
+
     session = SessionLocal()
     try:
         user = _upsert_demo_user(session)

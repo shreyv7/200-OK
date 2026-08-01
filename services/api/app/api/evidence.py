@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.di import get_current_user_id, get_db
 from app.repositories import evidence_repository
-from app.schemas.evidence import EvidenceEvent, EvidenceIngestRequest
+from app.schemas.evidence import EvidenceEvent, EvidenceIngestBody, EvidenceIngestRequest
 from app.services.evidence import service as evidence_service
 
 router = APIRouter(tags=["evidence"])
@@ -17,14 +17,13 @@ router = APIRouter(tags=["evidence"])
 
 @router.post("/evidence", response_model=EvidenceEvent)
 def create_evidence(
-    request: EvidenceIngestRequest,
+    body: EvidenceIngestBody,
     response: Response,
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ) -> EvidenceEvent:
-    # Attribute to the authenticated caller, not a client-supplied body field —
-    # a client-controlled userId would let one caller write events for another.
-    request = request.model_copy(update={"userId": user_id})
+    # userId is never accepted from the client — always the authenticated caller (A3).
+    request = EvidenceIngestRequest(userId=user_id, **body.model_dump())
     row, created = evidence_service.ingest(db, request)
     response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
     return evidence_repository.to_schema(row)

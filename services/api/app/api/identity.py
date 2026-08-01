@@ -68,7 +68,7 @@ def accept_evolution(
     reweight diff against the CURRENT confirmed attributes (M8 fix — the
     original version replaced the whole attribute list, silently dropping
     anything the proposal didn't mention)."""
-    found = evolution_repository.get(db, proposal_id)
+    found = evolution_repository.get_for_user(db, proposal_id, user_id)
     if found is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown proposal")
     row, proposal = found
@@ -88,12 +88,13 @@ def accept_evolution(
 def reject_evolution(
     proposal_id: str,
     db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
 ) -> EvolutionStatusResponse:
     """Reject -> no mutation whatsoever to identity data (merge gate 2)."""
-    found = evolution_repository.get(db, proposal_id)
+    found = evolution_repository.get_for_user(db, proposal_id, user_id)
     if found is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown proposal")
-    row, proposal = found
+    row, _proposal = found
     if row.status != "pending":
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Proposal already {row.status}")
 

@@ -71,7 +71,7 @@ def record_ledger_entry(
 
     if request.action == "dismissed":
         dismissal_count = ledger_repository.count_recent_dismissals(
-            db, request.hypothesisFamily, DISMISSAL_WINDOW_DAYS
+            db, user_id, request.hypothesisFamily, DISMISSAL_WINDOW_DAYS
         )
         # +1 for the dismissal being recorded right now.
         if dismissal_count + 1 >= DISMISSAL_FAILURE_THRESHOLD:

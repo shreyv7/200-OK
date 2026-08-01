@@ -10,11 +10,8 @@ client = TestClient(app)
 
 
 def _payload(event_type: str, minutes_ago: int = 0, value: float = 1.0) -> dict:
-    # userId is ignored by the API (attributed to the authenticated/bypassed
-    # user instead); event_type is used as a unique marker per test since all
-    # HTTP requests share one demo user under AUTH_BYPASS.
+    # userId is not accepted on the public body — attributed from the session.
     return {
-        "userId": "irrelevant-under-auth-bypass",
         "timestamp": (datetime.utcnow() - timedelta(minutes=minutes_ago)).isoformat(),
         "source": "trellis",
         "type": event_type,

@@ -16,3 +16,40 @@ dependencies = [
 minversion = "8.0"
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+ignore = [
+    "B008",
+    "DTZ003",
+    "DTZ011",
+    "DTZ001",
+    "BLE001",
+    "S110",
+    "S112",
+    "RUF012",
+    "RUF059",
+    "RUF046",
+    "RUF007",
+    "FURB162",
+    "C414",
+    "SIM102",
+    "F821",
+    "I001",
+    "RUF022",
+    "F401",
+    "UP006",
+    "UP007",
+    "UP017",
+    "UP035",
+    "UP037",
+    "UP045",
+    "RUF100",
+    "RUF010",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["F841"]

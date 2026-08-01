@@ -14,6 +14,7 @@ from app.api.health import router as health_router
 from app.api.identity import router as identity_router
 from app.api.ledger import router as ledger_router
 from app.api.lattice import router as lattice_router
+from app.api.me import router as me_router
 from app.api.onboarding import router as onboarding_router
 from app.api.partners import router as partners_router
 from app.api.stack import router as stack_router
@@ -27,6 +28,7 @@ app = FastAPI(title="Trellis API", version="0.1.0")
 
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(health_router)  # unprefixed convenience for liveness probes
+app.include_router(me_router, prefix="/api/v1")
 app.include_router(evidence_router, prefix="/api/v1")
 app.include_router(dashboard_router, prefix="/api/v1")
 app.include_router(identity_router, prefix="/api/v1")
