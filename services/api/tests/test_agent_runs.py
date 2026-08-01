@@ -1,19 +1,23 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.core.config import get_settings
 from app.core.di import get_llm_provider
+from app.integrations.mcp.trellis.adapter import FixtureTrellisAdapter
 from app.main import app
 from app.models.user import User
 from app.providers.llm.fake import FakeLLMProvider
 from app.repositories import twin_repository
+from app.schemas.evidence import RawMCPPayload
+from app.services.evidence import service as evidence_service
 from app.workers.seed import _DECLARED_ATTRIBUTES
 
 client = TestClient(app)
+_adapter = FixtureTrellisAdapter()
 
 
 def _ensure_demo_twin(db_session) -> None:
@@ -31,6 +35,28 @@ def _ensure_demo_twin(db_session) -> None:
         )
 
 
+def _seed_evidence_ids(db_session, count: int = 3) -> list[str]:
+    """AIA's real propose_identity_evolution only accepts citations that
+    match real evidence event ids in the window — needs actual rows,
+    not arbitrary strings."""
+    ids = []
+    for i in range(count):
+        raw = RawMCPPayload(
+            sourceProvider="trellis",
+            rawPayload={
+                "userId": get_settings().demo_user_id,
+                "type": "mission_completed",
+                "timestamp": (datetime.utcnow() - timedelta(minutes=i + 1)).isoformat(),
+                "units": 1.0,
+            },
+        )
+        event = _adapter.normalize(raw)
+        request = evidence_service.request_from_event(event)
+        row, _created = evidence_service.ingest(db_session, request)
+        ids.append(row.id)
+    return ids
+
+
 @pytest.fixture()
 def fake_llm():
     def _use(response: dict):
@@ -44,7 +70,12 @@ def fake_llm():
 
 def test_weekly_report_run(db_session, fake_llm) -> None:
     _ensure_demo_twin(db_session)
-    fake_llm({"narrative": "Fearful -> attended 2 events -> Confidence marker +9."})
+    fake_llm(
+        {
+            "narrative": "Fearful -> attended 2 events -> Confidence marker +9.",
+            "highlights": ["Attended 2 speaking events"],
+        }
+    )
 
     resp = client.post("/api/v1/agents/runs", json={"type": "weekly_report"})
     assert resp.status_code == 200
@@ -56,19 +87,20 @@ def test_weekly_report_run(db_session, fake_llm) -> None:
 
 def test_evolution_run_persists_pending_proposal(db_session, fake_llm) -> None:
     _ensure_demo_twin(db_session)
+    evidence_ids = _seed_evidence_ids(db_session)
     fake_llm(
         {
-            "proposedAttributes": [
+            "narrative": "Recent behavior suggests entrepreneurship over public speaking.",
+            "proposedChanges": [
                 {
-                    "id": "entrepreneur",
-                    "label": "Startup Founder",
-                    "weight": 1.0,
-                    "targetWeeklyPoints": 15.0,
-                    "markers": [],
+                    "action": "add",
+                    "attributeId": "entrepreneur",
+                    "attributeLabel": "Startup Founder",
+                    "newWeight": 0.3,
+                    "reason": "Shipped multiple missions this week.",
+                    "evidenceIds": evidence_ids,
                 }
             ],
-            "citedEvidenceIds": ["evt-1", "evt-2", "evt-3"],
-            "rationale": "Recent behavior suggests entrepreneurship over public speaking.",
         }
     )
 
@@ -76,5 +108,6 @@ def test_evolution_run_persists_pending_proposal(db_session, fake_llm) -> None:
     assert resp.status_code == 200
     body = resp.json()
     assert body["type"] == "evolution"
-    assert body["evolutionProposal"]["status"] == "pending"
+    assert body["evolutionProposal"] is not None
+    assert body["evolutionProposal"]["proposedChanges"][0]["action"] == "add"
     assert body["weeklyReport"] is None

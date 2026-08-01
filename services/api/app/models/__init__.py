@@ -2,6 +2,7 @@
 
 from app.models.agent_run import AgentRunModel
 from app.models.base import Base
+from app.models.calendar_event import CalendarEventModel
 from app.models.catalog import GrowthStoryModel, MentorModel, ToolModel
 from app.models.evidence_event import EvidenceEventModel
 from app.models.identity_evolution import IdentityEvolutionProposalModel
@@ -32,4 +33,5 @@ __all__ = [
     "MentorModel",
     "AgentRunModel",
     "IdentityEvolutionProposalModel",
+    "CalendarEventModel",
 ]

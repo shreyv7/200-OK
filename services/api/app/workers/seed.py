@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import random
+import uuid
 from datetime import datetime, timedelta
 
 from app.core.config import get_settings
@@ -19,8 +20,15 @@ from app.integrations.mcp.trellis.adapter import FixtureTrellisAdapter
 from app.models.user import User
 from app.providers.llm.fake import FakeLLMProvider
 from app.providers.search.fake import FakeSearchProvider
-from app.repositories import evolution_repository, intervention_repository, ledger_repository, twin_repository
+from app.repositories import (
+    calendar_repository,
+    evolution_repository,
+    intervention_repository,
+    ledger_repository,
+    twin_repository,
+)
 from app.schemas.evidence import RawMCPPayload
+from app.schemas.evolution import IdentityEvolutionProposal, ProposedChange
 from app.schemas.identity import DeclaredSelf, IdentityAttribute, IdentityMarker
 from app.services.curation import stack_orchestration
 from app.services.evidence import service as evidence_service
@@ -188,28 +196,57 @@ def _ensure_demo_dismissal_history(session, user_id: str) -> int:
 
 def _ensure_demo_evolution_proposal(session, user_id: str) -> bool:
     """Seeds one evolution proposal (prd.md F11 MVP: no live LLM call needed
-    for the demo to have something to accept/reject)."""
+    for the demo to have something to accept/reject). Matches AIA's real
+    IdentityEvolutionProposal/ProposedChange shape (add/remove/reweight
+    diff), not a flat attribute replacement."""
     if evolution_repository.has_pending_for_user(session, user_id):
         return False
-    evolution_repository.create(
-        session,
-        user_id=user_id,
-        proposed_attributes=_DECLARED_ATTRIBUTES
-        + [
-            IdentityAttribute(
-                id="entrepreneur",
-                label="Startup Founder",
-                weight=0.3,
-                targetWeeklyPoints=15.0,
-                markers=[IdentityMarker(id="ships_product", label="Ships a product update")],
-            )
+
+    twin = twin_repository.get_active_declared_self(session, user_id)
+    version = twin.version if twin is not None else 1
+
+    proposal = IdentityEvolutionProposal(
+        proposalId=str(uuid.uuid4()),
+        userId=user_id,
+        declaredSelfVersion=version,
+        proposedChanges=[
+            ProposedChange(
+                action="add",
+                attributeId="entrepreneur",
+                attributeLabel="Startup Founder",
+                newWeight=0.3,
+                reason="Recent commits and shipped missions outweigh speaking practice this month.",
+                evidenceIds=["seed-evt-1", "seed-evt-2", "seed-evt-3"],
+            ),
+            ProposedChange(
+                action="reweight",
+                attributeId="public_speaker",
+                attributeLabel="Confident Public Speaker",
+                newWeight=0.35,
+                reason="Speaking practice has slowed relative to shipping activity.",
+                evidenceIds=["seed-evt-1", "seed-evt-2", "seed-evt-3"],
+            ),
         ],
-        cited_evidence_ids=[],
-        rationale=(
+        supportingEvidenceIds=["seed-evt-1", "seed-evt-2", "seed-evt-3"],
+        narrative=(
             "You originally wanted to become a public speaker, but your recent "
             "behavior suggests a growing interest in entrepreneurship."
         ),
+        generatedAt=datetime.utcnow(),
     )
+    evolution_repository.create(session, proposal)
+    return True
+
+
+def _ensure_demo_calendar_events(session, user_id: str) -> bool:
+    """Seeds 2-3 fixed leverage-moment events (prd.md F9 example: "college
+    presentation, Friday")."""
+    if calendar_repository.has_events(session, user_id):
+        return False
+    now = datetime.utcnow()
+    calendar_repository.create(session, user_id, "College presentation", now + timedelta(days=3), "public_speaker")
+    calendar_repository.create(session, user_id, "Toastmasters open mic", now + timedelta(days=7), "public_speaker")
+    calendar_repository.create(session, user_id, "Project demo day", now + timedelta(days=10), "builder")
     return True
 
 
@@ -223,9 +260,11 @@ def main() -> None:
         dismissals = _ensure_demo_dismissal_history(session, user.id)
         stories, tools, mentors = seed_catalog(session)
         evolution_seeded = _ensure_demo_evolution_proposal(session, user.id)
+        calendar_seeded = _ensure_demo_calendar_events(session, user.id)
         logger.info(
             "Seed complete: user=%s twin_version=%d inserted_events=%d "
-            "prepared_stack=%s seeded_dismissals=%d catalog=%d/%d/%d evolution=%s",
+            "prepared_stack=%s seeded_dismissals=%d catalog=%d/%d/%d "
+            "evolution=%s calendar=%s",
             user.id,
             twin.version,
             inserted,
@@ -235,6 +274,7 @@ def main() -> None:
             tools,
             mentors,
             evolution_seeded,
+            calendar_seeded,
         )
     finally:
         session.close()

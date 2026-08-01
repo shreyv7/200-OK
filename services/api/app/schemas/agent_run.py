@@ -1,35 +1,25 @@
-"""Weekly Report + Identity Evolution contracts. Owner: Backend. F8/F11 (prd.md), milestones.md M7."""
+"""Agent run request/result envelope. Owner: Backend. F8/F11 (prd.md), milestones.md M7/M8.
+
+M8 fix: WeeklyReport/IdentityEvolutionProposal used to be duplicated
+here with different shapes than AIA's real generation output
+(app.schemas.report / app.schemas.evolution). Deleted the duplicates —
+this module now only wraps AIA's schemas in a run envelope.
+"""
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from app.schemas.identity import IdentityAttribute
+from app.schemas.evolution import IdentityEvolutionProposal
+from app.schemas.report import WeeklyReport
 
 AgentRunType = Literal["weekly_report", "evolution"]
-EvolutionStatus = Literal["pending", "accepted", "rejected"]
 
 
 class AgentRunRequest(BaseModel):
     type: AgentRunType
-
-
-class WeeklyReport(BaseModel):
-    narrative: str
-    generatedAt: datetime = Field(default_factory=datetime.utcnow)
-
-
-class IdentityEvolutionProposal(BaseModel):
-    id: str
-    userId: str
-    proposedAttributes: list[IdentityAttribute]
-    citedEvidenceIds: list[str] = Field(default_factory=list)
-    rationale: str
-    status: EvolutionStatus = "pending"
-    createdAt: datetime = Field(default_factory=datetime.utcnow)
 
 
 class AgentRunResult(BaseModel):

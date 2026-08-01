@@ -1,39 +1,35 @@
-"""Identity Evolution proposal persistence. Owner: Backend. milestones.md M7 (F11)."""
+"""Identity Evolution proposal persistence. Owner: Backend. milestones.md M7/M8 (F11)."""
 
 from __future__ import annotations
 
 from sqlalchemy import select
 
 from app.models.identity_evolution import IdentityEvolutionProposalModel
-from app.schemas.agent_run import IdentityEvolutionProposal
-from app.schemas.identity import IdentityAttribute
+from app.schemas.evolution import IdentityEvolutionProposal, ProposedChange
 
 
 def _to_schema(row: IdentityEvolutionProposalModel) -> IdentityEvolutionProposal:
     return IdentityEvolutionProposal(
-        id=row.id,
+        proposalId=row.id,
         userId=row.user_id,
-        proposedAttributes=[IdentityAttribute.model_validate(a) for a in row.proposed_attributes],
-        citedEvidenceIds=row.cited_evidence_ids,
-        rationale=row.rationale,
-        status=row.status,
-        createdAt=row.created_at,
+        declaredSelfVersion=row.declared_self_version,
+        proposedChanges=[ProposedChange.model_validate(c) for c in row.proposed_changes],
+        supportingEvidenceIds=row.supporting_evidence_ids,
+        narrative=row.narrative,
+        generatedAt=row.generated_at,
     )
 
 
-def create(
-    db,
-    user_id: str,
-    proposed_attributes: list[IdentityAttribute],
-    cited_evidence_ids: list[str],
-    rationale: str,
-) -> IdentityEvolutionProposal:
+def create(db, proposal: IdentityEvolutionProposal) -> IdentityEvolutionProposal:
     row = IdentityEvolutionProposalModel(
-        user_id=user_id,
-        proposed_attributes=[a.model_dump(mode="json") for a in proposed_attributes],
-        cited_evidence_ids=cited_evidence_ids,
-        rationale=rationale,
+        id=proposal.proposalId,
+        user_id=proposal.userId,
+        declared_self_version=proposal.declaredSelfVersion,
+        proposed_changes=[c.model_dump(mode="json") for c in proposal.proposedChanges],
+        supporting_evidence_ids=proposal.supportingEvidenceIds,
+        narrative=proposal.narrative,
         status="pending",
+        generated_at=proposal.generatedAt,
     )
     db.add(row)
     db.commit()
@@ -50,7 +46,8 @@ def get(db, proposal_id: str) -> tuple[IdentityEvolutionProposalModel, IdentityE
 
 def has_pending_for_user(db, user_id: str) -> bool:
     stmt = select(IdentityEvolutionProposalModel.id).where(
-        IdentityEvolutionProposalModel.user_id == user_id
+        IdentityEvolutionProposalModel.user_id == user_id,
+        IdentityEvolutionProposalModel.status == "pending",
     )
     return db.scalar(stmt) is not None
 
