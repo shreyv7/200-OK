@@ -30,7 +30,7 @@ function SignupPage() {
 
   return (
     <RedirectIfAuthenticated fallback={forceRedirectUrl}>
-      <div className="relative flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12 overflow-hidden">
+      <div className="relative flex min-h-screen flex-col items-center justify-center px-4 py-12 overflow-hidden">
         <div className="relative z-10 mb-8 flex items-center gap-3">
           <LatticeMark className="h-5 w-5 text-foreground" />
           <Link

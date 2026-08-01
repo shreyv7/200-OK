@@ -141,3 +141,87 @@
     linear-gradient(90deg, rgba(17, 17, 17, 0.035) 1px, transparent 1px);
   background-size: 24px 24px;
 }
+
+/* Ambient ribbon drift — CSS so motion starts without waiting on JS */
+@keyframes ribbon-float-a {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  33% {
+    transform: translate(52px, -40px) rotate(3deg);
+  }
+  66% {
+    transform: translate(-28px, 24px) rotate(-2deg);
+  }
+}
+
+@keyframes ribbon-float-b {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  33% {
+    transform: translate(-44px, 32px) rotate(-2.5deg);
+  }
+  66% {
+    transform: translate(36px, -26px) rotate(2deg);
+  }
+}
+
+@keyframes ribbon-float-c {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  33% {
+    transform: translate(40px, -28px) rotate(2deg);
+  }
+  66% {
+    transform: translate(-46px, 36px) rotate(-1.5deg);
+  }
+}
+
+@keyframes ribbon-float-d {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  33% {
+    transform: translate(-56px, 26px) rotate(-2deg);
+  }
+  66% {
+    transform: translate(32px, -34px) rotate(2.5deg);
+  }
+}
+
+.ribbon-float {
+  transform-box: view-box;
+  transform-origin: center;
+  will-change: transform;
+}
+
+.ribbon-float-a {
+  animation: ribbon-float-a 14s ease-in-out infinite;
+}
+
+.ribbon-float-b {
+  animation: ribbon-float-b 11s ease-in-out infinite;
+}
+
+.ribbon-float-c {
+  animation: ribbon-float-c 16s ease-in-out infinite;
+}
+
+.ribbon-float-d {
+  animation: ribbon-float-d 18s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ribbon-float-a,
+  .ribbon-float-b,
+  .ribbon-float-c,
+  .ribbon-float-d {
+    animation: none;
+  }
+}

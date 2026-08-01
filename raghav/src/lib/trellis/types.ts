@@ -67,3 +67,31 @@ export interface Unlearning {
   hypothesis: string;
   adaptation: string;
 }
+
+export type InterventionLens = "Media" | "Micro-Action" | "Real-World";
+
+export interface InterventionCard {
+  id: string;
+  lens: InterventionLens;
+  action: string;
+  reasoning: string;
+  duration: string;
+}
+
+export type Verdict = "worked" | "failed" | "pending";
+
+export interface LedgerEntry {
+  id: string;
+  verdict: Verdict;
+  /** The prediction Trellis made when it delivered the intervention. */
+  hypothesis: string;
+  /** Intervention family / lens, e.g. Media or Micro-Action. */
+  family: string;
+  deliveredAt: string;
+  /** What the user actually saw. */
+  delivered: string;
+  outcomeWindow: string;
+  evidence: string;
+  /** Present when the failure triggered System Unlearning. */
+  adaptation?: string;
+}
