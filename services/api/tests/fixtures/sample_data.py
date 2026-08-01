@@ -160,6 +160,26 @@ def sample_prior_stack_for_replacement() -> IdentityStack:
     )
 
 
+def sample_guardian_context(
+    *,
+    capacity_pct: int = 100,
+    interventions_today: int = 0,
+    recent_dismissal_rate: float = 0.0,
+) -> "GuardianContext":
+    from app.services.recommendation.guardian import GuardianContext
+
+    return GuardianContext(
+        capacity_pct=capacity_pct,
+        interventions_today=interventions_today,
+        last_intervention_at=None,
+        recent_dismissal_rate=recent_dismissal_rate,
+    )
+
+
+def sample_active_stack_for_variants() -> IdentityStack:
+    return sample_prior_stack_for_replacement()
+
+
 def sample_onboarding_confirm_event(
     *,
     with_gap_snapshot: bool = True,
