@@ -1,15 +1,27 @@
-"""Public curation cycle seam for Backend refresh/Celery — AIS M4."""
+"""Public curation cycle seam for Backend refresh/Celery — AIS M4/M5."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from app.agents.graphs.coordinator import build_coordinator_graph
 from app.providers.llm.base import LLMProvider
 from app.providers.search.base import SearchProvider
-from app.schemas import DecisionPacket, IdentityStack
+from app.schemas import DecisionPacket, IdentityStack, InterventionVariant
 from app.services.recommendation.curation_context import curation_providers
+from app.services.recommendation.guardian import GuardianContext
 from app.services.recommendation.stack_state import get_active_stack, set_active_stack
+from app.services.recommendation.variants import generate_variants, select_variant_by_capacity
+
+
+@dataclass
+class CurationCycleResult:
+    stack: IdentityStack
+    variants: list[InterventionVariant]
+    guardian_decision: dict[str, Any] | None = None
+    delivery_allowed: bool = True
 
 
 def _build_initial_state(
@@ -20,6 +32,7 @@ def _build_initial_state(
     prior_stack: IdentityStack | None = None,
     search_provider: SearchProvider | None = None,
     llm_provider: LLMProvider | None = None,
+    guardian_context: GuardianContext | None = None,
 ) -> dict[str, Any]:
     state: dict[str, Any] = {
         "trigger": trigger,
@@ -37,6 +50,11 @@ def _build_initial_state(
         state["search_provider"] = search_provider
     if llm_provider is not None:
         state["llm_provider"] = llm_provider
+    if guardian_context is not None:
+        state["capacity_pct"] = guardian_context.capacity_pct
+        state["interventions_today"] = guardian_context.interventions_today
+        state["last_intervention_at"] = guardian_context.last_intervention_at
+        state["recent_dismissal_rate"] = guardian_context.recent_dismissal_rate
     return state
 
 
@@ -49,8 +67,10 @@ def run_curation_cycle(
     search: SearchProvider | None = None,
     llm: LLMProvider | None = None,
     persist_active_stack: bool = True,
-) -> IdentityStack:
-    """Decision → diagnose → retrieve → assemble; never returns an empty stack."""
+    guardian_context: GuardianContext | None = None,
+    with_variants: bool = False,
+) -> IdentityStack | CurationCycleResult:
+    """Decision → diagnose → retrieve → assemble → guardian; never empty stack."""
     effective_run_id = run_id or f"curation-{decision_packet.userId}"
     if prior_stack is None:
         prior_stack = get_active_stack(decision_packet.userId)
@@ -62,6 +82,7 @@ def run_curation_cycle(
         prior_stack=prior_stack,
         search_provider=search,
         llm_provider=llm,
+        guardian_context=guardian_context,
     )
 
     graph = build_coordinator_graph()
@@ -80,9 +101,25 @@ def run_curation_cycle(
             search=search,
             small_experiment=bool(result.get("small_experiment")),
         )
+        variants = generate_variants(stack) if with_variants else []
+        if guardian_context is not None:
+            stack = select_variant_by_capacity(variants, guardian_context.capacity_pct).stack
     else:
         stack = IdentityStack.model_validate(stack_data)
+        variant_payloads = result.get("intervention_variants") or []
+        variants = [InterventionVariant.model_validate(item) for item in variant_payloads]
+        if not variants and with_variants:
+            variants = generate_variants(stack)
 
-    if persist_active_stack:
+    if persist_active_stack and result.get("delivery_allowed", True):
         set_active_stack(decision_packet.userId, stack)
+
+    if with_variants or guardian_context is not None:
+        return CurationCycleResult(
+            stack=stack,
+            variants=variants,
+            guardian_decision=result.get("guardian_decision"),
+            delivery_allowed=bool(result.get("delivery_allowed", True)),
+        )
+
     return stack

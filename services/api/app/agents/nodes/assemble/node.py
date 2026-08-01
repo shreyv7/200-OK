@@ -26,5 +26,4 @@ def assemble_node(state: dict[str, Any]) -> dict[str, Any]:
     return {
         "visited": ["assemble"],
         "identity_stack": stack.model_dump(),
-        "delivery_allowed": True,
     }

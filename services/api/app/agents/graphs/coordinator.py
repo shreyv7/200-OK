@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import operator
+from datetime import datetime
 from typing import Annotated, Any, NotRequired, TypedDict
 
 from langgraph.checkpoint.memory import MemorySaver
@@ -23,8 +24,14 @@ class CoordinatorState(TypedDict):
     planner_candidates: NotRequired[list[dict[str, Any]]]
     prior_stack: NotRequired[dict[str, Any] | None]
     identity_stack: NotRequired[dict[str, Any] | None]
+    intervention_variants: NotRequired[list[dict[str, Any]]]
+    guardian_decision: NotRequired[dict[str, Any] | None]
     small_experiment: NotRequired[bool]
     delivery_allowed: NotRequired[bool]
+    capacity_pct: NotRequired[int]
+    interventions_today: NotRequired[int]
+    last_intervention_at: NotRequired[datetime | str | None]
+    recent_dismissal_rate: NotRequired[float]
     llm_provider: NotRequired[Any]
     search_provider: NotRequired[Any]
 
@@ -35,6 +42,7 @@ GRAPH_NODE_ORDER = [
     "opportunity",
     "planner",
     "assemble",
+    "guardian",
     "reflection",
     "coach",
 ]
