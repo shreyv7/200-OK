@@ -19,7 +19,7 @@ from app.integrations.mcp.trellis.adapter import FixtureTrellisAdapter
 from app.models.user import User
 from app.providers.llm.fake import FakeLLMProvider
 from app.providers.search.fake import FakeSearchProvider
-from app.repositories import intervention_repository, twin_repository
+from app.repositories import intervention_repository, ledger_repository, twin_repository
 from app.schemas.evidence import RawMCPPayload
 from app.schemas.identity import DeclaredSelf, IdentityAttribute, IdentityMarker
 from app.services.curation import stack_orchestration
@@ -158,6 +158,33 @@ def _ensure_prepared_intervention(session, user_id: str) -> bool:
     return True
 
 
+DEMO_HYPOTHESIS_FAMILY = "media_public_speaking"
+
+
+def _ensure_demo_dismissal_history(session, user_id: str) -> int:
+    """Seeds two prior dismissals (prd.md F7 demo script: the third LIVE
+    dismissal on stage crosses DISMISSAL_FAILURE_THRESHOLD=3). Idempotent —
+    only inserts if this family has no dismissal history yet."""
+    existing = ledger_repository.count_recent_dismissals(session, DEMO_HYPOTHESIS_FAMILY, 14)
+    if existing > 0:
+        return 0
+
+    active = intervention_repository.get_active(session, user_id)
+    hypothesis_id = active.hypothesis_id if active is not None else f"hyp-{user_id}"
+
+    for days_ago in (5, 3):
+        ledger_repository.record(
+            session,
+            user_id=user_id,
+            hypothesis_id=hypothesis_id,
+            hypothesis_family=DEMO_HYPOTHESIS_FAMILY,
+            action="dismissed",
+            verdict="pending",
+            timestamp=datetime.utcnow() - timedelta(days=days_ago),
+        )
+    return 2
+
+
 def main() -> None:
     session = SessionLocal()
     try:
@@ -165,12 +192,15 @@ def main() -> None:
         twin = _upsert_confirmed_twin(session, user.id)
         inserted = _generate_history(session, user.id)
         prepared = _ensure_prepared_intervention(session, user.id)
+        dismissals = _ensure_demo_dismissal_history(session, user.id)
         logger.info(
-            "Seed complete: user=%s twin_version=%d inserted_events=%d prepared_stack=%s",
+            "Seed complete: user=%s twin_version=%d inserted_events=%d "
+            "prepared_stack=%s seeded_dismissals=%d",
             user.id,
             twin.version,
             inserted,
             prepared,
+            dismissals,
         )
     finally:
         session.close()

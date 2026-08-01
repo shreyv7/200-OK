@@ -10,7 +10,7 @@ from app.core.di import get_current_user_id, get_db, get_llm_provider, get_searc
 from app.providers.llm.base import LLMProvider
 from app.providers.search.base import SearchProvider
 from app.repositories import intervention_repository
-from app.schemas.stack import IdentityStack
+from app.schemas.stack import IdentityStack, InterventionVariant
 from app.services.curation import stack_orchestration
 
 router = APIRouter(tags=["stack"])
@@ -51,3 +51,18 @@ def get_active_stack(
             detail="No active stack yet — call POST /stack/refresh first.",
         )
     return intervention_repository.to_stack(row)
+
+
+@router.get("/stack/variants", response_model=dict[str, InterventionVariant])
+def get_stack_variants(
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+) -> dict[str, InterventionVariant]:
+    """full/light/micro variants sharing the active hypothesisId (F6 Capacity Slider)."""
+    row = intervention_repository.get_active(db, user_id)
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active stack yet — call POST /stack/refresh first.",
+        )
+    return intervention_repository.to_variants(row)

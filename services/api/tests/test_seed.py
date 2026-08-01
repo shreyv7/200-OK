@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from app.core.config import get_settings
 from app.models.user import User
-from app.repositories import intervention_repository
+from app.repositories import intervention_repository, ledger_repository
 from app.workers.seed import (
+    DEMO_HYPOTHESIS_FAMILY,
+    _ensure_demo_dismissal_history,
     _ensure_prepared_intervention,
     _generate_history,
     _upsert_confirmed_twin,
@@ -41,3 +43,17 @@ def test_ensure_prepared_intervention_is_idempotent(db_session) -> None:
 
     created_second = _ensure_prepared_intervention(db_session, user.id)
     assert created_second is False
+
+
+def test_ensure_demo_dismissal_history_seeds_two_and_is_idempotent(db_session) -> None:
+    user = _upsert_demo_user(db_session)
+    _upsert_confirmed_twin(db_session, user.id)
+    _ensure_prepared_intervention(db_session, user.id)
+
+    first = _ensure_demo_dismissal_history(db_session, user.id)
+    assert first == 2
+    assert ledger_repository.count_recent_dismissals(db_session, DEMO_HYPOTHESIS_FAMILY, 14) == 2
+
+    second = _ensure_demo_dismissal_history(db_session, user.id)
+    assert second == 0
+    assert ledger_repository.count_recent_dismissals(db_session, DEMO_HYPOTHESIS_FAMILY, 14) == 2

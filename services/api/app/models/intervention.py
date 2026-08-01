@@ -22,5 +22,6 @@ class InterventionModel(Base):
     user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), index=True)
     hypothesis_id: Mapped[str] = mapped_column(String, index=True)
     stack_json: Mapped[dict] = mapped_column(JSON)
+    variants_json: Mapped[dict] = mapped_column(JSON, default=dict)  # {"full":..,"light":..,"micro":..}
     verdict: Mapped[str] = mapped_column(String, default="pending")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

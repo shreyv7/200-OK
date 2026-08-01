@@ -16,11 +16,13 @@ from app.providers.llm.base import LLMProvider
 from app.providers.search.base import SearchProvider
 from app.repositories import intervention_repository
 from app.schemas.decision import DecisionPacket
-from app.schemas.stack import IdentityStack
+from app.schemas.stack import IdentityStack, InterventionVariant
 from app.services.curation.fallback_resources import get_fallback_resources
 from app.services.curation.retrieval_chain import search_with_fallback
 from app.services.identity import orchestration
 from app.services.recommendation.stack_assembler import assemble_stack
+
+VARIANT_INTENSITIES = ("full", "light", "micro")
 
 
 def _to_decision_packet(user_id: str, result: orchestration.RecomputeResult) -> DecisionPacket:
@@ -70,8 +72,29 @@ def refresh_stack(
         decision_packet,
         candidates=candidates,
         capacity_tier="full",
+        run_id=user_id,
         llm=llm_provider,
         search=search_provider,
     )
-    intervention_repository.create(db, user_id, stack)
+
+    # Pre-store full/light/micro variants sharing one hypothesisId (F6:
+    # Capacity Slider swaps between these locally, no new LLM/API call).
+    variants: dict[str, dict] = {}
+    for intensity in VARIANT_INTENSITIES:
+        tier_stack = (
+            stack
+            if intensity == "full"
+            else assemble_stack(
+                decision_packet,
+                candidates=candidates,
+                capacity_tier=intensity,
+                run_id=user_id,
+                llm=llm_provider,
+                search=search_provider,
+            )
+        )
+        variant = InterventionVariant(hypothesisId=stack.hypothesisId, intensity=intensity, stack=tier_stack)
+        variants[intensity] = variant.model_dump(mode="json")
+
+    intervention_repository.create(db, user_id, stack, variants=variants)
     return stack
