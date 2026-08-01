@@ -42,3 +42,28 @@ def warm_cache_after_onboarding(
     except Exception as exc:  # noqa: BLE001 — warm-cache must not block onboarding
         logger.warning("warm_cache_after_onboarding failed for %s: %s", user_id, exc)
         return WarmCacheResult(ok=False, reason=str(exc))
+
+
+def warm_cache_after_evolution(
+    user_id: str,
+    decision_packet: DecisionPacket,
+    *,
+    run_id: str | None = None,
+    llm: LLMProvider | None = None,
+    search: SearchProvider | None = None,
+) -> WarmCacheResult:
+    """Best-effort refresh after evolution accept; never raises."""
+    try:
+        stack = run_curation_cycle(
+            decision_packet,
+            trigger="evolution.accepted",
+            run_id=run_id or f"warm-evolve-{user_id}",
+            llm=llm,
+            search=search,
+            persist_active_stack=True,
+        )
+        stack_id = stack.id if hasattr(stack, "id") else stack.stack.id
+        return WarmCacheResult(ok=True, stackId=stack_id)
+    except Exception as exc:  # noqa: BLE001 — warm-cache must not block accept path
+        logger.warning("warm_cache_after_evolution failed for %s: %s", user_id, exc)
+        return WarmCacheResult(ok=False, reason=str(exc))

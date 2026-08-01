@@ -220,3 +220,32 @@ def sample_onboarding_confirm_event(
         confirmedAt="2026-08-01T12:00:00Z",
         gapSnapshot=sample_gap_snapshot() if with_gap_snapshot else None,
     )
+
+
+def sample_evolution_accepted_event(
+    *,
+    with_gap_snapshot: bool = True,
+    declared_self_version: int = 2,
+) -> "EvolutionAcceptedEvent":
+    from app.services.recommendation.evolution_trigger import EvolutionAcceptedEvent
+
+    return EvolutionAcceptedEvent(
+        userId="user-aarav",
+        declaredSelfVersion=declared_self_version,
+        acceptedAt="2026-08-01T12:00:00Z",
+        gapSnapshot=sample_gap_snapshot() if with_gap_snapshot else None,
+    )
+
+
+def sample_report_requested_state() -> dict:
+    packet = sample_decision_packet()
+    return {
+        "trigger": "report.requested",
+        "run_id": "run-report-fixture-001",
+        "user_id": packet.userId,
+        "decision_packet": packet.model_dump(),
+        "stack_draft": None,
+        "visited": [],
+        "evidence_id": None,
+        "hypothesis_id": "hyp-report-fixture-001",
+    }
