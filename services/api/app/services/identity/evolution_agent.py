@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 import uuid
 from typing import Any, List, Optional
 
+from app.prompts.loader import build_messages
 from app.providers.llm.repair import generate_structured_with_repair
 from app.schemas.evidence import EvidenceEvent
 from app.schemas.evolution import IdentityEvolutionProposal, ProposedChange
@@ -52,27 +53,19 @@ def propose_identity_evolution(
         event_ids = [e.id for e in events]
         evidence_summary_str = f"Total touchpoints: {len(events)}. Event IDs: {', '.join(event_ids[:15])}"
 
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "You are the Trellis Identity Evolution Agent. "
-                    "Propose confirmable attribute changes (add/remove/reweight) based on evidence. "
-                    "Each proposed change MUST cite at least 3 supporting evidence IDs from the input. "
-                    "Return JSON with 'narrative' and 'proposedChanges' array."
-                ),
-            },
-            {
-                "role": "user",
-                "content": (
-                    f"User: {user_id}\n"
-                    f"Declared Self Version: {declared_self.version}\n"
-                    f"Declared Attributes: {attr_summary}\n"
-                    f"Evidence Window Summary: {evidence_summary_str}\n"
-                    f"Current Gap Score: {gap_result.gap_score}"
-                ),
-            },
-        ]
+        # B6 (docs/work.md): this previously hardcoded its own inline
+        # prompt text that quietly diverged from the already-written,
+        # already-versioned identity/evolution_proposal_v1.md template —
+        # which sat unused in the repo the whole time. build_messages()
+        # is the single facade every call site should go through.
+        messages = build_messages(
+            "identity/evolution_proposal_v1",
+            user_id=user_id,
+            declared_self_version=declared_self.version,
+            declared_attributes_summary=attr_summary,
+            evidence_summary=evidence_summary_str,
+            gap_score=gap_result.gap_score,
+        )
 
         schema = {
             "type": "object",

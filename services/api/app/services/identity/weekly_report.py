@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 import uuid
 from typing import Any, List, Optional
 
+from app.prompts.loader import build_messages
 from app.providers.llm.repair import generate_structured_with_repair
 from app.schemas.evidence import EvidenceEvent
 from app.schemas.identity import DeclaredSelf
@@ -101,24 +102,18 @@ def generate_weekly_report(
         summary_lines = [f"- {e.type} ({e.category if hasattr(e, 'category') else 'evidence'})" for e in events[:10]]
         evidence_str = "\n".join(summary_lines) if summary_lines else "No recent events"
 
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "You are the Trellis Weekly Becoming Report generator. "
-                    "Focus on identity movement, NOT hours or time-tracking. "
-                    "Return JSON with 'narrative' (string) and 'highlights' (array of strings)."
-                ),
-            },
-            {
-                "role": "user",
-                "content": (
-                    f"User: {user_id}\n"
-                    f"Gap score start: {gap_start}, end: {gap_end}, delta: {gap_delta}\n"
-                    f"Evidence touchpoints:\n{evidence_str}"
-                ),
-            },
-        ]
+        # B6 (docs/work.md): build_messages() is the single prompt facade —
+        # no prompt template previously existed for this call site at all
+        # (identity/weekly_report_v1.md is new); this used to hardcode its
+        # own inline system+user text instead.
+        messages = build_messages(
+            "identity/weekly_report_v1",
+            user_id=user_id,
+            gap_start=gap_start,
+            gap_end=gap_end,
+            gap_delta=gap_delta,
+            evidence_summary=evidence_str,
+        )
 
         schema = {
             "type": "object",
