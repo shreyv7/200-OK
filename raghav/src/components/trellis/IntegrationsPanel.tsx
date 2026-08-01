@@ -1,6 +1,7 @@
 import { Calendar, Github } from "lucide-react";
 import { IntegrationConnectionCard } from "./IntegrationConnectionCard";
 import { useIntegrationsStatus } from "@/lib/integrations/useIntegrations";
+import { ScreenTimePanel } from "@/components/screentime";
 
 export function IntegrationsPanel() {
   const { data: statuses, isLoading, error } = useIntegrationsStatus();
@@ -18,6 +19,9 @@ export function IntegrationsPanel() {
           Synced events bypass simulation, update your Revealed Self, and dynamically drive your Identity Gap score.
         </p>
       </div>
+
+      {/* Screen Time & Device Telemetry Drop Box */}
+      <ScreenTimePanel />
 
       {error && (
         <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 font-mono text-xs text-destructive">
