@@ -65,3 +65,44 @@ def test_ingest_triggers_recompute_without_explicit_dashboard_call(db_session) -
     assert latest is not None
     if count_before is None:
         assert latest.gap_score is not None
+
+
+def test_gap_snapshot_conversion_matches_recompute_result() -> None:
+    """Locks in the M3 prerequisite fix: wiring must translate a real
+    RecomputeResult into AIS's GapSnapshot, not leave emit_evidence_created
+    permanently on its degraded placeholder path."""
+    from app.schemas.bottleneck import BottleneckPacket
+    from app.schemas.gap import AttributeContribution, GapBreakdown
+    from app.services.identity.orchestration import RecomputeResult
+    from app.services.identity.wiring import _to_gap_snapshot
+
+    gap = GapBreakdown(
+        userId="u1",
+        gapScore=62,
+        alignmentScore=38,
+        createPoints=5.0,
+        consumePoints=2.0,
+        driftPoints=1.0,
+        createConsumeRatio=1.6,
+        consistency=0.7,
+        momentum=-3,
+        attributes=[
+            AttributeContribution(attributeId="a1", w_i=0.5, D_i=15.0, R_i=6.0, deficit_i=0.6)
+        ],
+    )
+    result = RecomputeResult(
+        gap=gap,
+        bottleneck=BottleneckPacket(bottleneck="execution", confidence=0.8),
+        snapshot=None,  # not needed for this conversion
+        gap_delta=-6.0,
+        prior_gap_score=68,
+        timestamp="2026-08-01T00:00:00+00:00",
+    )
+
+    snapshot = _to_gap_snapshot("u1", result)
+
+    assert snapshot.userId == "u1"
+    assert snapshot.gapScore == 62
+    assert snapshot.gapDelta == -6.0
+    assert snapshot.alignment == 38
+    assert snapshot.priorGapScore == 68

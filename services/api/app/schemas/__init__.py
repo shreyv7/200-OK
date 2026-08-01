@@ -11,6 +11,11 @@ from app.schemas.gap import AttributeContribution, GapBreakdown
 from app.schemas.identity import DeclaredSelf, IdentityAttribute, IdentityMarker
 from app.schemas.ledger import LedgerEntry
 from app.schemas.lattice import LatticeContributor, LatticeStrutResponse
+from app.schemas.onboarding import (
+    IdentityPatchRequest,
+    OnboardingTurnRequest,
+    OnboardingTurnResponse,
+)
 from app.schemas.stack import IdentityStack, InterventionVariant, StackElement, StackExplanation
 
 __all__ = [
@@ -28,6 +33,9 @@ __all__ = [
     "LedgerEntry",
     "LatticeContributor",
     "LatticeStrutResponse",
+    "IdentityPatchRequest",
+    "OnboardingTurnRequest",
+    "OnboardingTurnResponse",
     "IdentityStack",
     "InterventionVariant",
     "StackElement",
