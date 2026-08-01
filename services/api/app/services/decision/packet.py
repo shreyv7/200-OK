@@ -34,6 +34,14 @@ class BottleneckCandidate:
 
 
 @dataclass
+class CatalogFeatures:
+    stage: str  # "early" | "developing" | "advancing" | "peak"
+    bottleneck_label: str
+    bottleneck_confidence: float
+    top_deficit_attr_id: str
+
+
+@dataclass
 class DecisionPacket:
     user_id: str
     gap_score: int
@@ -46,6 +54,7 @@ class DecisionPacket:
     low_confidence_flag: bool = False
     should_recurate: bool = False
     curation_intensity: str = "full"  # "full" | "light" | "micro"
+    catalog_features: Optional[CatalogFeatures] = None
 
 
 def build_decision_packet(
@@ -58,6 +67,7 @@ def build_decision_packet(
     low_confidence_flag: bool = False,
     should_recurate: Optional[bool] = None,
     curation_intensity: str = "full",
+    catalog_features: Optional[CatalogFeatures] = None,
 ) -> DecisionPacket:
     """Builds a DecisionPacket given GapResult and optional prior Gap score."""
     gap_delta = (gap_result.gap_score - prior_gap_score) if prior_gap_score is not None else 0
@@ -78,4 +88,5 @@ def build_decision_packet(
         low_confidence_flag=low_confidence_flag,
         should_recurate=should_recurate,
         curation_intensity=curation_intensity,
+        catalog_features=catalog_features,
     )

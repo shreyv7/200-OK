@@ -12,6 +12,7 @@ from app.schemas.identity import DeclaredSelf
 from app.services.decision.packet import DecisionPacket, build_decision_packet
 from app.services.identity.bottleneck_v0 import diagnose_bottleneck_v0
 from app.services.identity.bottleneck_v1 import diagnose_bottleneck_v1
+from app.services.identity.catalog_features import extract_catalog_features
 from app.services.identity.growth_decision import evaluate_growth_decision
 from app.services.identity.kpi import KPISnapshot, build_kpi_snapshot
 from app.services.identity.sanitizer import get_event_delta_days
@@ -96,7 +97,10 @@ def recompute_user_gap(
         prior_bottleneck_label=prior_bottleneck_label,
     )
 
-    # 4. DecisionPacket assembly
+    # 4. Catalog features extraction for AIS catalog ranking (M6)
+    catalog_features = extract_catalog_features(gap_result, bottleneck_candidates)
+
+    # 5. DecisionPacket assembly
     decision_packet = build_decision_packet(
         user_id=user_id,
         gap_result=gap_result,
@@ -107,6 +111,7 @@ def recompute_user_gap(
         low_confidence_flag=growth_decision.low_confidence_flag,
         should_recurate=growth_decision.should_recurate,
         curation_intensity=growth_decision.curation_intensity,
+        catalog_features=catalog_features,
     )
 
     return gap_result, kpi_snapshot, decision_packet

@@ -41,6 +41,11 @@ from app.services.identity.guardian_decision import (
     GuardianDecision,
     evaluate_guardian_action,
 )
+from app.services.identity.catalog_features import (
+    extract_catalog_features,
+    get_stage_from_gap,
+    trigger_identity_embedding,
+)
 from app.services.identity.recompute import (
     recompute_user_gap,
 )
@@ -76,6 +81,9 @@ __all__ = [
     "GuardianAction",
     "GuardianDecision",
     "evaluate_guardian_action",
+    "extract_catalog_features",
+    "get_stage_from_gap",
+    "trigger_identity_embedding",
     "recompute_user_gap",
     "InterviewTurn",
     "InterviewState",
