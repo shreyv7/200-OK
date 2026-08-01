@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.core.config import get_settings
 from app.models.intervention import InterventionModel
+from app.models.identity_evolution import IdentityEvolutionProposalModel
 from app.models.user import User
 from app.repositories import evolution_repository, intervention_repository, ledger_repository
 from app.workers.seed import (
@@ -67,9 +68,17 @@ def test_ensure_demo_dismissal_history_seeds_two_and_is_idempotent(db_session) -
     assert ledger_repository.count_recent_dismissals(db_session, DEMO_HYPOTHESIS_FAMILY, 14) == 2
 
 
+def _clear_evolution_proposals(db_session, user_id: str) -> None:
+    db_session.query(IdentityEvolutionProposalModel).filter(
+        IdentityEvolutionProposalModel.user_id == user_id
+    ).delete()
+    db_session.commit()
+
+
 def test_ensure_demo_evolution_proposal_is_idempotent(db_session) -> None:
     user = _upsert_demo_user(db_session)
     _upsert_confirmed_twin(db_session, user.id)
+    _clear_evolution_proposals(db_session, user.id)
 
     first = _ensure_demo_evolution_proposal(db_session, user.id)
     assert first is True
