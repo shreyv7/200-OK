@@ -2,8 +2,12 @@
 
 Used by the simulator (doomscroll burst / time advance) and the seed
 script for in-app event types that don't come from an external MCP
-provider. Weight constants mirror prd.md §9 fixed evidence weights —
-never invented at call time.
+provider. Event-type strings and weights are sourced from AIA's frozen
+Gap formula constants (app.services.identity.scoring.constants) — the
+single source of truth the deterministic Gap math keys off of. Backend
+must speak that vocabulary exactly; duplicating it here caused a real
+M1 bug where "focus_drift"/"passive_item_completed" silently failed to
+match CREATION_TYPES/PASSIVE_TYPES/DRIFT_TYPES (fixed in M2).
 """
 
 from __future__ import annotations
@@ -13,21 +17,12 @@ from datetime import datetime
 
 from app.integrations.mcp.base import EvidenceAdapter
 from app.schemas.evidence import EvidenceEvent, RawMCPPayload
-
-MISSION_COMPLETED_WEIGHT = 3.0
-PASSIVE_ITEM_WEIGHT = 1.0
-FOCUS_DRIFT_WEIGHT_PER_10MIN = -2.0
+from app.services.identity.scoring.constants import EVENT_WEIGHTS
 
 _CATEGORY_BY_TYPE = {
     "mission_completed": "creation",
-    "passive_item_completed": "passive_learning",
-    "focus_drift": "focus_drift",
-}
-
-_WEIGHT_BY_TYPE = {
-    "mission_completed": MISSION_COMPLETED_WEIGHT,
-    "passive_item_completed": PASSIVE_ITEM_WEIGHT,
-    "focus_drift": FOCUS_DRIFT_WEIGHT_PER_10MIN,
+    "passive_item": "passive_learning",
+    "focus_drift_10min": "focus_drift",
 }
 
 
@@ -55,7 +50,7 @@ class FixtureTrellisAdapter(EvidenceAdapter):
             category=_CATEGORY_BY_TYPE[event_type],
             identityAttributeIds=raw.get("identityAttributeIds", []),
             value=units,
-            baseWeight=_WEIGHT_BY_TYPE[event_type],
+            baseWeight=EVENT_WEIGHTS[event_type],
             metadata=raw.get("metadata", {}),
             simulated=raw.get("simulated", True),
         )

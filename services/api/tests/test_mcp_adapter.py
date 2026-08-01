@@ -33,16 +33,38 @@ def test_trellis_adapter_normalizes_focus_drift() -> None:
         sourceProvider="trellis",
         rawPayload={
             "userId": "u1",
-            "type": "focus_drift",
+            "type": "focus_drift_10min",
             "timestamp": datetime.utcnow().isoformat(),
             "units": 2.0,
         },
     )
     event = adapter.normalize(raw)
 
+    # type must match AIA's scoring constants exactly (DRIFT_TYPES/EVENT_WEIGHTS
+    # key off "focus_drift_10min", not the category label "focus_drift") — a
+    # real M1 mismatch, fixed in M2.
+    assert event.type == "focus_drift_10min"
     assert event.category == "focus_drift"
     assert event.baseWeight == -2.0
     assert event.value == 2.0
+
+
+def test_trellis_adapter_passive_item_matches_scoring_constants() -> None:
+    from app.services.identity.scoring.constants import PASSIVE_TYPES
+
+    adapter = FixtureTrellisAdapter()
+    raw = RawMCPPayload(
+        sourceProvider="trellis",
+        rawPayload={
+            "userId": "u1",
+            "type": "passive_item",
+            "timestamp": datetime.utcnow().isoformat(),
+        },
+    )
+    event = adapter.normalize(raw)
+
+    assert event.type in PASSIVE_TYPES
+    assert event.baseWeight == 1.0
 
 
 def test_adapter_output_flows_through_ingest_pipeline(db_session) -> None:

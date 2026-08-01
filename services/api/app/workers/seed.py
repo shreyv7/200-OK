@@ -17,7 +17,9 @@ from app.core.db import SessionLocal
 from app.integrations.mcp.github.adapter import FixtureGithubAdapter
 from app.integrations.mcp.trellis.adapter import FixtureTrellisAdapter
 from app.models.user import User
+from app.repositories import twin_repository
 from app.schemas.evidence import RawMCPPayload
+from app.schemas.identity import DeclaredSelf, IdentityAttribute, IdentityMarker
 from app.services.evidence import service as evidence_service
 
 logging.basicConfig(level=logging.INFO)
@@ -26,14 +28,44 @@ logger = logging.getLogger("seed")
 SEED_RNG = 20260801  # fixed seed: identical demo data every run
 DAYS = 21
 
+# Fixture Declared Self for the demo persona (prd.md §4). NOT a substitute
+# for the real Mirror Interview (M3) — this exists only so M2's dashboard
+# and Gap math have a confirmed identity to compute against before
+# onboarding ships. Attribute ids intentionally match AIA's
+# KEYWORD_ATTRIBUTE_MAP (app/services/identity/enrichment.py) so seeded
+# events enrich against real attributes instead of the "first attribute"
+# fallback.
+_DECLARED_ATTRIBUTES = [
+    IdentityAttribute(
+        id="public_speaker",
+        label="Confident Public Speaker",
+        weight=0.5,
+        targetWeeklyPoints=15.0,
+        markers=[
+            IdentityMarker(id="speaks_publicly", label="Speaks in front of others"),
+            IdentityMarker(id="publishes_recordings", label="Publishes recordings"),
+        ],
+    ),
+    IdentityAttribute(
+        id="builder",
+        label="Builder Who Ships Projects",
+        weight=0.5,
+        targetWeeklyPoints=15.0,
+        markers=[
+            IdentityMarker(id="ships_code", label="Commits and publishes code"),
+            IdentityMarker(id="completes_missions", label="Completes micro-missions"),
+        ],
+    ),
+]
+
 _trellis_adapter = FixtureTrellisAdapter()
 _github_adapter = FixtureGithubAdapter()
 
 # Per day, weighted toward passive/drift with sparse creation, matching
 # Aarav's persona (prd.md §4: tutorials watched, nothing published).
 _DAY_EVENT_TYPES = (
-    ["passive_item_completed"] * 2
-    + ["focus_drift"]
+    ["passive_item"] * 2
+    + ["focus_drift_10min"]
     + ["mission_completed"]  # roughly every ~3rd day effectively via RNG below
 )
 
@@ -47,6 +79,19 @@ def _upsert_demo_user(session) -> User:
         session.commit()
         session.refresh(user)
     return user
+
+
+def _upsert_confirmed_twin(session, user_id: str) -> DeclaredSelf:
+    existing = twin_repository.get_active_declared_self(session, user_id)
+    if existing is not None:
+        return existing
+    return twin_repository.create_version(
+        session,
+        user_id=user_id,
+        version=1,
+        attributes=_DECLARED_ATTRIBUTES,
+        confirmed_at=datetime.utcnow(),
+    )
 
 
 def _generate_history(session, user_id: str) -> int:
@@ -101,8 +146,14 @@ def main() -> None:
     session = SessionLocal()
     try:
         user = _upsert_demo_user(session)
+        twin = _upsert_confirmed_twin(session, user.id)
         inserted = _generate_history(session, user.id)
-        logger.info("Seed complete: user=%s inserted_events=%d", user.id, inserted)
+        logger.info(
+            "Seed complete: user=%s twin_version=%d inserted_events=%d",
+            user.id,
+            twin.version,
+            inserted,
+        )
     finally:
         session.close()
 

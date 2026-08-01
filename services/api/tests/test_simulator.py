@@ -27,6 +27,7 @@ def test_doomscroll_burst_injects_real_pipeline_rows() -> None:
 
     for event in events:
         assert event["source"] == "trellis"
+        assert event["type"] == "focus_drift_10min"
         assert event["category"] == "focus_drift"
         assert event["simulated"] is True
         # No pre-scored Gap/score field anywhere on the injected row —
@@ -44,4 +45,4 @@ def test_time_advance_injects_one_event() -> None:
     assert resp.status_code == 200
     events = resp.json()
     assert len(events) == 1
-    assert events[0]["type"] == "passive_item_completed"
+    assert events[0]["type"] == "passive_item"
