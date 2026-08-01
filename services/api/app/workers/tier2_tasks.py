@@ -21,8 +21,11 @@ logger = logging.getLogger("tier2_tasks")
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=5)
 def curate_tier2_background_task(self: Any, user_id: str | None = None) -> dict[str, Any]:
     """Execute Tier-2 off-request-path deep curation in Celery worker."""
+    if not user_id:
+        raise ValueError("curate_tier2_background_task requires user_id (never demo fallback)")
+
     settings = get_settings()
-    target_user_id = user_id or settings.demo_user_id
+    target_user_id = user_id
     llm_provider = get_llm_provider(settings)
     search_provider = get_search_provider(settings)
 

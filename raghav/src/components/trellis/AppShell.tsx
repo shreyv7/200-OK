@@ -1,3 +1,4 @@
+import { UserButton, useUser } from "@clerk/react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "motion/react";
@@ -7,7 +8,6 @@ import { LivingTrellisBackground } from "./LivingTrellisBackground";
 import { CapacitySlider } from "./CapacitySlider";
 import { SimulatorDrawer } from "./SimulatorDrawer";
 import { useTrellis } from "@/lib/trellis/store";
-import { mock } from "@/lib/trellis/mockApi";
 
 const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -20,8 +20,20 @@ const nav = [
 export function AppShell({ title, children }: { title: string; children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { unlearning, clearUnlearning, calendarPing } = useTrellis();
+  const { user } = useUser();
   const [simOpen, setSimOpen] = useState(false);
   const isDev = import.meta.env.DEV;
+
+  const displayName =
+    user?.fullName ||
+    user?.firstName ||
+    user?.primaryEmailAddress?.emailAddress ||
+    "Signed in";
+  const displaySub =
+    user?.primaryEmailAddress?.emailAddress ||
+    user?.username ||
+    "Trellis member";
+  const avatarLetter = (displayName[0] || "T").toUpperCase();
 
   useEffect(() => {
     if (!isDev) return;
@@ -89,15 +101,16 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
 
         <div className="px-5 py-5 border-t border-border">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-foreground text-[10px] font-mono font-medium text-background">
-              {mock.demoUser.name[0]}
+            <UserButton afterSignOutUrl="/" />
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-foreground text-[10px] font-mono font-medium text-background md:hidden">
+              {avatarLetter}
             </div>
             <div className="leading-tight min-w-0">
               <p className="text-[11px] font-medium text-foreground truncate">
-                {mock.demoUser.name}
+                {displayName}
               </p>
-              <p className="font-mono text-[9.5px] text-muted-foreground">
-                {mock.demoUser.role}
+              <p className="font-mono text-[9.5px] text-muted-foreground truncate">
+                {displaySub}
               </p>
             </div>
           </div>

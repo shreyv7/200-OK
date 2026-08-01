@@ -2,9 +2,14 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, Check } from "lucide-react";
+
+import { RequireAuth } from "@/authentication";
 import { LivingTrellisBackground } from "@/components/trellis/LivingTrellisBackground";
 import { LatticeMark } from "@/components/trellis/Lattice";
-import { mock } from "@/lib/trellis/mockApi";
+import { ApiError } from "@/lib/api/client";
+import * as api from "@/lib/api/endpoints";
+import { mapDeclaredSelf, type OnboardingDeclaredView } from "@/lib/api/mappers";
+import type { ApiDeclaredSelf } from "@/lib/api/types";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({
@@ -18,8 +23,16 @@ export const Route = createFileRoute("/onboarding")({
       { property: "og:title", content: "Mirror Interview — Trellis" },
     ],
   }),
-  component: Onboarding,
+  component: OnboardingPage,
 });
+
+function OnboardingPage() {
+  return (
+    <RequireAuth>
+      <Onboarding />
+    </RequireAuth>
+  );
+}
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
@@ -109,6 +122,10 @@ function Onboarding() {
     },
   ]);
   const [typing, setTyping] = useState(false);
+  const [draftApi, setDraftApi] = useState<ApiDeclaredSelf | null>(null);
+  const [draftDeclared, setDraftDeclared] = useState<OnboardingDeclaredView | null>(null);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -145,14 +162,65 @@ function Onboarding() {
     } else {
       setTyping(true);
       setTimeout(() => {
-        setTyping(false);
-        setPhase("extracting");
-        setTimeout(() => setPhase("confirm"), 1800);
+        void (async () => {
+          try {
+            const boot = await api.onboardingTurn({ sessionId: null, message: "" });
+            let sessionId = boot.sessionId;
+            let draft: ApiDeclaredSelf | null = null;
+
+            for (const msg of nextAnswers) {
+              const turn = await api.onboardingTurn({ sessionId, message: msg });
+              sessionId = turn.sessionId;
+              if (turn.draft) draft = turn.draft;
+            }
+
+            if (draft) {
+              setDraftApi(draft);
+              setDraftDeclared(mapDeclaredSelf(draft));
+              setConfirmError(null);
+            } else {
+              setConfirmError(
+                "Could not extract a Declared Self from your answers. Try again.",
+              );
+            }
+          } catch (err) {
+            setConfirmError(
+              err instanceof ApiError
+                ? err.message
+                : "Onboarding extraction failed. Try again.",
+            );
+          }
+          setTyping(false);
+          setPhase("extracting");
+          setTimeout(() => setPhase("confirm"), 1200);
+        })();
       }, 500);
     }
   };
 
-  const declared = mock.demoUser.declaredSelf;
+  const confirmAndEnter = async () => {
+    if (confirming) return;
+    setConfirmError(null);
+
+    const attributes = draftApi?.attributes ?? [];
+    if (!attributes.length) {
+      setConfirmError("Nothing to confirm yet — finish the interview first.");
+      return;
+    }
+
+    setConfirming(true);
+    try {
+      await api.patchIdentity({ attributes, confirm: true });
+      void navigate({ to: "/dashboard", replace: true });
+    } catch (err) {
+      setConfirmError(
+        err instanceof ApiError ? err.message : "Could not confirm identity.",
+      );
+      setConfirming(false);
+    }
+  };
+
+  const declared = draftDeclared ?? { headline: "", attributes: [] };
 
   return (
     <div className="relative min-h-screen bg-background text-foreground overflow-x-hidden">
@@ -194,7 +262,6 @@ function Onboarding() {
                 </p>
               </div>
 
-              {/* Progress */}
               <div className="flex items-center gap-2">
                 {QUESTIONS.map((q, i) => (
                   <div
@@ -210,7 +277,6 @@ function Onboarding() {
                 ))}
               </div>
 
-              {/* Chat thread */}
               <div className="rounded-3xl border border-border bg-card/90 backdrop-blur-xl p-5 sm:p-7 min-h-[420px] flex flex-col">
                 <div className="flex-1 space-y-4 overflow-y-auto max-h-[48vh] pr-1">
                   {messages.map((m) => (
@@ -257,7 +323,6 @@ function Onboarding() {
                   <div ref={bottomRef} />
                 </div>
 
-                {/* Options */}
                 {phase === "chat" && !typing && (
                   <div className="mt-6 space-y-2 border-t border-border pt-5">
                     <p className="label-eyebrow mb-3">{currentQ.hint}</p>
@@ -288,13 +353,19 @@ function Onboarding() {
               <div>
                 <p className="label-eyebrow text-signal">Did I get you right?</p>
                 <h1 className="mt-2 font-display text-3xl sm:text-4xl font-medium tracking-tight leading-[1.1]">
-                  {declared.headline}
+                  {declared.headline || "Your Declared Self"}
                 </h1>
                 <p className="mt-3 text-sm text-muted-foreground max-w-lg">
                   Confirm this Declared Self. Trellis will measure your behaviour
                   against these markers — nothing changes without your consent.
                 </p>
               </div>
+
+              {confirmError && (
+                <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 font-mono text-xs text-destructive">
+                  {confirmError}
+                </div>
+              )}
 
               <div className="grid gap-4 sm:grid-cols-2">
                 {declared.attributes.map((attr) => (
@@ -330,16 +401,16 @@ function Onboarding() {
               </div>
 
               <div className="rounded-2xl border border-border bg-secondary/60 p-4 font-mono text-[11px] text-muted-foreground">
-                Extracted from your answers · consent moment · you can edit later via
-                Identity Evolution (Weekly Report)
+                Extracted for your signed-in account · consent moment · no Aarav seed
               </div>
 
               <div className="flex flex-wrap gap-3 pt-2">
                 <button
-                  onClick={() => navigate({ to: "/dashboard" })}
-                  className="inline-flex items-center gap-2 rounded-full bg-foreground px-7 py-3.5 text-sm font-medium text-background hover:bg-foreground/90 transition-colors"
+                  onClick={() => void confirmAndEnter()}
+                  disabled={confirming || !draftApi}
+                  className="inline-flex items-center gap-2 rounded-full bg-foreground px-7 py-3.5 text-sm font-medium text-background hover:bg-foreground/90 transition-colors disabled:opacity-50"
                 >
-                  Confirm & enter Trellis
+                  {confirming ? "Confirming…" : "Confirm & enter Trellis"}
                   <ArrowRight className="h-4 w-4" />
                 </button>
                 <button
@@ -347,6 +418,9 @@ function Onboarding() {
                     setPhase("chat");
                     setQIndex(0);
                     setAnswers([]);
+                    setDraftApi(null);
+                    setDraftDeclared(null);
+                    setConfirmError(null);
                     setMessages([
                       {
                         id: "m0r",

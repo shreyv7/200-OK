@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown, XCircle, CheckCircle2, Clock, Lightbulb } from "lucide-react";
+import { RequireAuth } from "@/authentication";
 import { AppShell } from "@/components/trellis/AppShell";
 import { useTrellis } from "@/lib/trellis/store";
 import type { LedgerEntry, Verdict } from "@/lib/trellis/types";
@@ -18,10 +19,18 @@ export const Route = createFileRoute("/ledger")({
       { property: "og:title", content: "Trust Ledger — Trellis" },
     ],
   }),
-  component: Ledger,
+  component: LedgerPage,
 });
 
 const filters = ["All", "Worked", "Failed", "Pending"] as const;
+
+function LedgerPage() {
+  return (
+    <RequireAuth>
+      <Ledger />
+    </RequireAuth>
+  );
+}
 
 function Ledger() {
   const { ledger, unlearning } = useTrellis();

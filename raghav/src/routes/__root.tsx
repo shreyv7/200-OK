@@ -1,3 +1,4 @@
+import { ClerkProvider } from "@clerk/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -9,6 +10,8 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
+import { ClerkAuthBridge } from "../authentication";
+import { clerkAppearance } from "../authentication/clerkAppearance";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { TrellisProvider } from "../lib/trellis/store";
@@ -138,14 +141,47 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as
+    | string
+    | undefined;
+
+  if (!publishableKey) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <div className="flex min-h-screen items-center justify-center bg-background px-6">
+          <div className="max-w-md space-y-3 text-center">
+            <p className="font-mono text-xs tracking-[0.16em] uppercase text-muted-foreground">
+              Config required
+            </p>
+            <h1 className="text-xl font-semibold text-foreground">
+              Missing VITE_CLERK_PUBLISHABLE_KEY
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Copy your Clerk publishable key into{" "}
+              <code className="font-mono text-foreground">raghav/.env</code> (see{" "}
+              <code className="font-mono text-foreground">.env.example</code>), then
+              restart the Vite dev server.
+            </p>
+          </div>
+        </div>
+      </QueryClientProvider>
+    );
+  }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TrellisProvider>
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-        <Toaster />
-      </TrellisProvider>
-    </QueryClientProvider>
+    <ClerkProvider
+      publishableKey={publishableKey}
+      afterSignOutUrl="/"
+      appearance={clerkAppearance as never}
+    >
+      <QueryClientProvider client={queryClient}>
+        <ClerkAuthBridge />
+        <TrellisProvider>
+          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          <Outlet />
+          <Toaster />
+        </TrellisProvider>
+      </QueryClientProvider>
+    </ClerkProvider>
   );
 }

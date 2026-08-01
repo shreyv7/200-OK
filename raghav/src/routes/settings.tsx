@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { RequireAuth } from "@/authentication";
 import { AppShell } from "@/components/trellis/AppShell";
 import { IntegrationsPanel } from "@/components/trellis/IntegrationsPanel";
 import { SlidersHorizontal, Zap } from "lucide-react";
@@ -15,8 +16,16 @@ export const Route = createFileRoute("/settings")({
       },
     ],
   }),
-  component: SettingsPage,
+  component: SettingsRoute,
 });
+
+function SettingsRoute() {
+  return (
+    <RequireAuth>
+      <SettingsPage />
+    </RequireAuth>
+  );
+}
 
 function SettingsPage() {
   const [activeTab, setActiveTab] = useState<"integrations" | "preferences">("integrations");

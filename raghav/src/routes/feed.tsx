@@ -10,6 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { RequireAuth } from "@/authentication";
 import { AppShell } from "@/components/trellis/AppShell";
 import { useTrellis } from "@/lib/trellis/store";
 import { mock } from "@/lib/trellis/mockApi";
@@ -35,8 +36,16 @@ export const Route = createFileRoute("/feed")({
       { property: "og:title", content: "Growth Feed — Trellis" },
     ],
   }),
-  component: GrowthFeed,
+  component: GrowthFeedPage,
 });
+
+function GrowthFeedPage() {
+  return (
+    <RequireAuth>
+      <GrowthFeed />
+    </RequireAuth>
+  );
+}
 
 const ease = [0.16, 1, 0.3, 1] as const;
 

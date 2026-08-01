@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowDownRight, Check, X } from "lucide-react";
+import { RequireAuth } from "@/authentication";
 import { AppShell } from "@/components/trellis/AppShell";
 import { useTrellis } from "@/lib/trellis/store";
 import { mock } from "@/lib/trellis/mockApi";
@@ -18,10 +19,18 @@ export const Route = createFileRoute("/report")({
       { property: "og:title", content: "Weekly Becoming Report — Trellis" },
     ],
   }),
-  component: Report,
+  component: ReportPage,
 });
 
 const ease = [0.16, 1, 0.3, 1] as const;
+
+function ReportPage() {
+  return (
+    <RequireAuth>
+      <Report />
+    </RequireAuth>
+  );
+}
 
 function Report() {
   const { gap, identityUpdated, acceptIdentityEvolution } = useTrellis();

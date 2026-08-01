@@ -21,7 +21,7 @@ export function IntegrationsPanel() {
 
       {error && (
         <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 font-mono text-xs text-destructive">
-          Failed to load integration status. Make sure the API server is running (default http://localhost:8002).
+          Failed to load integration status. Sign in, then ensure the API is running (default http://localhost:8002).
         </div>
       )}
 

@@ -13,9 +13,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as LedgerRouteImport } from './routes/ledger'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as ReportRouteImport } from './routes/report'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SignupRouteImport } from './routes/signup'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -37,6 +39,11 @@ const LedgerRoute = LedgerRouteImport.update({
   path: '/ledger',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
@@ -52,24 +59,33 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
   '/ledger': typeof LedgerRoute
+  '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/report': typeof ReportRoute
   '/settings': typeof SettingsRoute
+  '/signup': typeof SignupRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
   '/ledger': typeof LedgerRoute
+  '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/report': typeof ReportRoute
   '/settings': typeof SettingsRoute
+  '/signup': typeof SignupRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -77,9 +93,11 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
   '/ledger': typeof LedgerRoute
+  '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/report': typeof ReportRoute
   '/settings': typeof SettingsRoute
+  '/signup': typeof SignupRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -88,27 +106,33 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/feed'
     | '/ledger'
+    | '/login'
     | '/onboarding'
     | '/report'
     | '/settings'
+    | '/signup'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/dashboard'
     | '/feed'
     | '/ledger'
+    | '/login'
     | '/onboarding'
     | '/report'
     | '/settings'
+    | '/signup'
   id:
     | '__root__'
     | '/'
     | '/dashboard'
     | '/feed'
     | '/ledger'
+    | '/login'
     | '/onboarding'
     | '/report'
     | '/settings'
+    | '/signup'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -116,9 +140,11 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   FeedRoute: typeof FeedRoute
   LedgerRoute: typeof LedgerRoute
+  LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
   ReportRoute: typeof ReportRoute
   SettingsRoute: typeof SettingsRoute
+  SignupRoute: typeof SignupRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -151,6 +177,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LedgerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/onboarding': {
       id: '/onboarding'
       path: '/onboarding'
@@ -172,6 +205,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -180,9 +220,11 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   FeedRoute: FeedRoute,
   LedgerRoute: LedgerRoute,
+  LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
   ReportRoute: ReportRoute,
   SettingsRoute: SettingsRoute,
+  SignupRoute: SignupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

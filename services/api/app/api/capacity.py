@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from app.core.di import get_current_user_id, get_db
 from app.models.user import User
 from app.schemas.evidence import EvidenceIngestRequest
+from app.services.curation.trigger_refresh import enqueue_tier2_stack_refresh
 from app.services.evidence import service as evidence_service
 
 router = APIRouter(tags=["capacity"])
@@ -52,5 +53,6 @@ def set_capacity(
         simulated=False,
     )
     evidence_service.ingest(db, context_event)
+    enqueue_tier2_stack_refresh(user_id)
 
     return {"capacity": user.capacity}

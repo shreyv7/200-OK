@@ -1,3 +1,4 @@
+import { useUser } from "@clerk/react";
 import { CapacitySlider } from "@/components/trellis/CapacitySlider";
 import { StackCard } from "@/components/trellis/StackCard";
 import { Lattice } from "@/components/trellis/Lattice";
@@ -9,6 +10,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { AppShell } from "@/components/trellis/AppShell";
+import { RequireAuth } from "@/authentication";
 import { ArrowUpRight, Zap } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard")({
@@ -23,16 +25,26 @@ export const Route = createFileRoute("/dashboard")({
       { property: "og:title", content: "Identity Dashboard — Trellis" },
     ],
   }),
-  component: Dashboard,
+  component: DashboardPage,
 });
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
+function DashboardPage() {
+  return (
+    <RequireAuth>
+      <Dashboard />
+    </RequireAuth>
+  );
+}
+
 function Dashboard() {
+  const { user } = useUser();
   const { gap, stack, declaredSelf, events, now, struts, pulsedStruts, capacity, tier } =
     useTrellis();
   const [sheetOpen, setSheetOpen] = useState(false);
   const bottleneck = mock.currentBottleneck;
+  const firstName = user?.firstName || user?.fullName || "you";
 
   const createPts = Math.round(gap.createRatio * 100);
   const consumePts = Math.round(gap.consumeRatio * 100);
@@ -54,8 +66,7 @@ function Dashboard() {
               <br />I said I wanted to become?
             </h1>
             <p className="mt-3 text-sm text-muted-foreground max-w-md">
-              Simulated 21-day history for {mock.demoUser.name} · Gap recomputes on every
-              evidence event
+              Welcome, {firstName}. Gap recomputes on every evidence event for your account.
             </p>
           </div>
           <button

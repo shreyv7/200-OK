@@ -11,6 +11,7 @@ from app.repositories import evolution_repository, twin_repository
 from app.repositories.twin_repository import WeightSumError
 from app.schemas.identity import DeclaredSelf
 from app.schemas.onboarding import IdentityPatchRequest
+from app.services.curation.trigger_refresh import enqueue_tier2_stack_refresh
 from app.services.identity.agent_runs import apply_proposed_changes
 
 router = APIRouter(tags=["identity"])
@@ -52,9 +53,12 @@ def patch_identity(
         return draft
 
     try:
-        return twin_repository.confirm_draft(db, user_id)
+        confirmed = twin_repository.confirm_draft(db, user_id)
     except WeightSumError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+    enqueue_tier2_stack_refresh(user_id)
+    return confirmed
 
 
 @router.post("/identity/evolution/{proposal_id}/accept", response_model=DeclaredSelf)
@@ -81,6 +85,7 @@ def accept_evolution(
 
     declared_self = twin_repository.create_confirmed_version(db, user_id, merged_attributes)
     evolution_repository.set_status(db, row, "accepted")
+    enqueue_tier2_stack_refresh(user_id)
     return declared_self
 
 

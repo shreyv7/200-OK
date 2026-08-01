@@ -10,6 +10,7 @@ os.environ.setdefault("ENV", "local")
 os.environ["AUTH_BYPASS"] = "true"
 os.environ["SEARCH_PROVIDER"] = "fake"
 os.environ["LLM_PROVIDER"] = "fake"
+os.environ["CELERY_TASK_ALWAYS_EAGER"] = "true"
 os.environ["DATABASE_URL"] = (
     "postgresql+psycopg://trellis:trellis@localhost:5432/trellis_test"
 )

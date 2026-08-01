@@ -30,10 +30,12 @@ configure_logging()
 
 app = FastAPI(title="Trellis API", version="0.1.0")
 
+_settings = get_settings()
+
 app.add_middleware(TraceContextMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_settings.cors_origin_list or ["http://localhost:8080"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -61,7 +63,6 @@ app.include_router(partners_router, prefix="/api/v1")
 
 register_identity_wiring()
 
-_settings = get_settings()
 if _settings.env == "local":
     from app.api.simulator import router as simulator_router
 

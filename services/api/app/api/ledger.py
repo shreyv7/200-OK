@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from app.core.di import get_current_user_id, get_db
 from app.repositories import ledger_repository
 from app.schemas.ledger import LedgerAction, LedgerEntry
+from app.services.curation.trigger_refresh import enqueue_tier2_stack_refresh
 from app.services.identity.scoring.constants import (
     DISMISSAL_FAILURE_THRESHOLD,
     DISMISSAL_WINDOW_DAYS,
@@ -81,7 +82,7 @@ def record_ledger_entry(
     elif request.action == "completed":
         verdict = "worked"
 
-    return ledger_repository.record(
+    entry = ledger_repository.record(
         db,
         user_id=user_id,
         hypothesis_id=request.hypothesisId,
@@ -91,3 +92,6 @@ def record_ledger_entry(
         unlearning_triggered=unlearning,
         lens_weight_adjustment=lens_adjustment,
     )
+    if request.action in ("dismissed", "completed"):
+        enqueue_tier2_stack_refresh(user_id)
+    return entry
