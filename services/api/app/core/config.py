@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     bedrock_region: str | None = None
     bedrock_model_id: str | None = None
 
+    # SearchProvider DI (milestones.md M4). Defaults to the deterministic
+    # fake so tests/local dev never require a live Tavily key.
+    search_provider: Literal["fake", "tavily"] = "fake"
+    tavily_api_key: str | None = None
+    tavily_timeout_seconds: float = 1.5
+
 
 def get_settings() -> Settings:
     return Settings()

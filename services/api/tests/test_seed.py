@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from app.core.config import get_settings
 from app.models.user import User
-from app.workers.seed import _generate_history, _upsert_demo_user
+from app.repositories import intervention_repository
+from app.workers.seed import (
+    _ensure_prepared_intervention,
+    _generate_history,
+    _upsert_confirmed_twin,
+    _upsert_demo_user,
+)
 
 
 def test_upsert_demo_user_is_idempotent(db_session) -> None:
@@ -23,3 +29,15 @@ def test_generate_history_is_simulated_and_idempotent(db_session) -> None:
     # every seeded event is idempotent via the same dedupe pipeline as live ingest.
     inserted_second = _generate_history(db_session, user.id)
     assert inserted_second == 0
+
+
+def test_ensure_prepared_intervention_is_idempotent(db_session) -> None:
+    user = _upsert_demo_user(db_session)
+    _upsert_confirmed_twin(db_session, user.id)
+
+    created_first = _ensure_prepared_intervention(db_session, user.id)
+    assert created_first is True
+    assert intervention_repository.get_active(db_session, user.id) is not None
+
+    created_second = _ensure_prepared_intervention(db_session, user.id)
+    assert created_second is False
