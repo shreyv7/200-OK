@@ -19,6 +19,17 @@ class Settings(BaseSettings):
 
     clerk_jwks_url: str | None = None
     clerk_issuer: str | None = None
+    # Optional JWT `aud` (set when your Clerk session template includes audience).
+    clerk_audience: str | None = None
+    # Comma-separated frontend origins / app IDs allowed in JWT `azp` claim.
+    clerk_authorized_parties: str = (
+        "http://localhost:8080,http://127.0.0.1:8080,"
+        "http://localhost:5173,http://127.0.0.1:5173"
+    )
+
+    @property
+    def clerk_authorized_party_list(self) -> list[str]:
+        return [p.strip() for p in self.clerk_authorized_parties.split(",") if p.strip()]
 
     # LLM provider DI (milestones.md M3). Defaults to the deterministic fake
     # so tests/local dev never require live Gemini credentials.
