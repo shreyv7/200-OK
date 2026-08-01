@@ -54,11 +54,28 @@ class Settings(BaseSettings):
     # so tests/local dev never require live Gemini credentials.
     llm_provider: Literal["fake", "gemini", "bedrock"] = "fake"
     gemini_api_key: str | None = None
+    # Additional keys for round-robin rotation (docs/work.md B2), comma-
+    # separated. Combined with gemini_api_key (kept for back-compat single-
+    # key config) via gemini_api_key_pool() below.
+    gemini_api_keys: str = ""
     # gemini-1.5-flash 404s against the current v1beta API (retired) —
     # verified live while wiring B1 (docs/work.md).
     gemini_model: str = "gemini-2.0-flash"
     bedrock_region: str | None = None
     bedrock_model_id: str | None = None
+
+    def gemini_api_key_pool(self) -> list[str]:
+        """Ordered, de-duplicated key pool: gemini_api_key first (back-compat
+        single-key config), then gemini_api_keys (comma-separated rotation
+        pool, docs/work.md B2)."""
+        pool: list[str] = []
+        if self.gemini_api_key:
+            pool.append(self.gemini_api_key)
+        for raw in self.gemini_api_keys.split(","):
+            key = raw.strip()
+            if key and key not in pool:
+                pool.append(key)
+        return pool
 
     # SearchProvider DI (milestones.md M4). Defaults to the deterministic
     # fake so tests/local dev never require a live Tavily key.

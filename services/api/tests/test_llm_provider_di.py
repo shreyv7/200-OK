@@ -15,7 +15,11 @@ def test_default_settings_resolve_to_fake_provider() -> None:
 
 
 def test_gemini_without_api_key_raises() -> None:
-    settings = Settings(llm_provider="gemini", gemini_api_key=None)
+    # gemini_api_keys="" is pinned explicitly, not left to ambient env/.env —
+    # otherwise a developer's local .env (real keys, gitignored) leaks into
+    # Settings() for any field this test doesn't set, silently making an
+    # "empty pool" test pass with a non-empty pool.
+    settings = Settings(llm_provider="gemini", gemini_api_key=None, gemini_api_keys="")
     with pytest.raises(RuntimeError):
         get_llm_provider(settings)
 
@@ -32,6 +36,29 @@ def test_gemini_with_api_key_resolves_real_provider() -> None:
     )
     provider = get_llm_provider(settings)
     assert isinstance(provider, GeminiLLMProvider)
+
+
+def test_gemini_api_key_pool_combines_and_dedupes() -> None:
+    """B2 (docs/work.md): GEMINI_API_KEY and GEMINI_API_KEYS combine into
+    one ordered, de-duplicated rotation pool."""
+    settings = Settings(
+        gemini_api_key="key-a", gemini_api_keys=" key-b , key-a ,key-c,,key-b "
+    )
+    assert settings.gemini_api_key_pool() == ["key-a", "key-b", "key-c"]
+
+
+def test_gemini_with_key_pool_resolves_provider_with_all_slots() -> None:
+    from app.providers.llm.gemini import GeminiLLMProvider
+
+    settings = Settings(
+        llm_provider="gemini",
+        gemini_api_key="key-a",
+        gemini_api_keys="key-b,key-c",
+        gemini_model="gemini-2.0-flash",
+    )
+    provider = get_llm_provider(settings)
+    assert isinstance(provider, GeminiLLMProvider)
+    assert len(provider.key_health()) == 3
 
 
 def test_gemini_config_accepts_nested_pydantic_schema() -> None:
