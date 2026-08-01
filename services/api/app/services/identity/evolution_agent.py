@@ -9,12 +9,27 @@ from datetime import datetime, timezone
 import uuid
 from typing import Any, List, Optional
 
+from app.prompts.loader import build_messages
+from app.providers.llm.repair import generate_structured_with_repair
 from app.schemas.evidence import EvidenceEvent
 from app.schemas.evolution import IdentityEvolutionProposal, ProposedChange
 from app.schemas.identity import DeclaredSelf
 from app.services.identity.scoring.gap import GapResult
 
 MIN_EVIDENCE_CITATIONS = 3
+
+
+def _validate_evolution_response(raw: object) -> dict:
+    """B4 (docs/work.md): raises on a malformed LLM response so
+    generate_structured_with_repair() knows to retry once before this
+    function falls back to returning no proposal (never a silent
+    fabricated one)."""
+    if not isinstance(raw, dict):
+        raise TypeError("response must be a JSON object")
+    changes = raw.get("proposedChanges")
+    if not isinstance(changes, list) or not changes:
+        raise ValueError("response must include a non-empty 'proposedChanges' array")
+    return raw
 
 
 def propose_identity_evolution(
@@ -38,27 +53,19 @@ def propose_identity_evolution(
         event_ids = [e.id for e in events]
         evidence_summary_str = f"Total touchpoints: {len(events)}. Event IDs: {', '.join(event_ids[:15])}"
 
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "You are the Trellis Identity Evolution Agent. "
-                    "Propose confirmable attribute changes (add/remove/reweight) based on evidence. "
-                    "Each proposed change MUST cite at least 3 supporting evidence IDs from the input. "
-                    "Return JSON with 'narrative' and 'proposedChanges' array."
-                ),
-            },
-            {
-                "role": "user",
-                "content": (
-                    f"User: {user_id}\n"
-                    f"Declared Self Version: {declared_self.version}\n"
-                    f"Declared Attributes: {attr_summary}\n"
-                    f"Evidence Window Summary: {evidence_summary_str}\n"
-                    f"Current Gap Score: {gap_result.gap_score}"
-                ),
-            },
-        ]
+        # B6 (docs/work.md): this previously hardcoded its own inline
+        # prompt text that quietly diverged from the already-written,
+        # already-versioned identity/evolution_proposal_v1.md template —
+        # which sat unused in the repo the whole time. build_messages()
+        # is the single facade every call site should go through.
+        messages = build_messages(
+            "identity/evolution_proposal_v1",
+            user_id=user_id,
+            declared_self_version=declared_self.version,
+            declared_attributes_summary=attr_summary,
+            evidence_summary=evidence_summary_str,
+            gap_score=gap_result.gap_score,
+        )
 
         schema = {
             "type": "object",
@@ -84,7 +91,7 @@ def propose_identity_evolution(
         }
 
         if hasattr(llm_provider, "generate_structured"):
-            res = llm_provider.generate_structured(schema=schema, messages=messages)
+            res = generate_structured_with_repair(llm_provider, schema, messages, _validate_evolution_response)
         elif hasattr(llm_provider, "generate"):
             res = llm_provider.generate(messages)
         else:

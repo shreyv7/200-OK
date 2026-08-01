@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.di import get_current_user_id, get_db, get_llm_provider
+from app.core.di import get_budgeted_llm_provider, get_current_user_id, get_db
 from app.providers.llm.base import LLMProvider
 from app.schemas.onboarding import OnboardingTurnRequest, OnboardingTurnResponse
 from app.services.identity import onboarding_orchestration
@@ -18,7 +18,7 @@ def onboarding_turn(
     request: OnboardingTurnRequest,
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
-    llm_provider: LLMProvider = Depends(get_llm_provider),
+    llm_provider: LLMProvider = Depends(get_budgeted_llm_provider),
 ) -> OnboardingTurnResponse:
     try:
         return onboarding_orchestration.advance_turn(
