@@ -23,6 +23,7 @@ on:
       - m6
       - m7
       - m8
+      - feat/**
     paths:
       - "services/api/**"
       - ".github/workflows/backend-ci.yml"
@@ -40,6 +41,20 @@ jobs:
     defaults:
       run:
         working-directory: services/api
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: trellis
+          POSTGRES_PASSWORD: trellis
+          POSTGRES_DB: trellis_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U trellis -d trellis_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
@@ -57,5 +72,5 @@ jobs:
         env:
           AUTH_BYPASS: "true"
           ENV: local
-          DATABASE_URL: "sqlite:///./ci_test.db"
+          DATABASE_URL: "postgresql+psycopg://trellis:trellis@localhost:5432/trellis_test"
         run: pytest -q
