@@ -9,6 +9,7 @@ from app.schemas import DecisionPacket, IdentityStack, StackElement
 from app.providers.llm.base import LLMProvider
 from app.providers.search.base import SearchProvider
 from app.services.recommendation.curation_context import get_curation_llm, get_curation_search
+from app.services.recommendation.badge_mapping import document_source_to_badge
 from app.services.recommendation.explanations import build_explanation
 from app.services.recommendation.fallback_catalog import get_fallback_knowledge, get_fallback_mission
 from app.services.recommendation.replacement import apply_replacement_policy
@@ -20,6 +21,32 @@ def build_providers(
 ) -> tuple[LLMProvider, SearchProvider]:
     """Factory seam for DI; Backend Depends() will inject real providers."""
     return llm or get_curation_llm(), search or get_curation_search()
+
+
+def _normalize_knowledge_candidate(candidate: dict[str, Any], index: int) -> dict[str, Any]:
+    """Accept AIS candidate dicts or Backend SearchProvider Document dumps."""
+    if "type" in candidate:
+        normalized = dict(candidate)
+        if "sourceBadge" not in normalized:
+            normalized["sourceBadge"] = document_source_to_badge(
+                str(normalized.get("source", "curated_fallback"))
+            )
+        if "id" not in normalized:
+            normalized["id"] = f"cand-media-{index}"
+        return normalized
+
+    return {
+        "id": candidate.get("id") or f"cand-media-{index}",
+        "type": "media",
+        "title": candidate.get("title") or "Growth resource",
+        "url": candidate.get("url"),
+        "sourceBadge": document_source_to_badge(str(candidate.get("source", "curated_fallback"))),
+        "extract": candidate.get("extract"),
+    }
+
+
+def _normalize_knowledge_candidates(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [_normalize_knowledge_candidate(candidate, index) for index, candidate in enumerate(candidates)]
 
 
 def _candidate_to_element(
@@ -70,6 +97,8 @@ def assemble_identity_stack(
 
     if not knowledge_candidates:
         knowledge_candidates = [fallback_knowledge]
+    else:
+        knowledge_candidates = _normalize_knowledge_candidates(knowledge_candidates)
     if not planner_candidates:
         planner_candidates = [fallback_mission]
 
@@ -137,7 +166,8 @@ def assemble_stack(
         else "execution"
     )
     if knowledge_candidates is None:
-        knowledge_candidates = candidates or [get_fallback_knowledge(bottleneck)]
+        raw = candidates or [get_fallback_knowledge(bottleneck)]
+        knowledge_candidates = _normalize_knowledge_candidates(raw)
     if planner_candidates is None:
         planner_candidates = [get_fallback_mission(bottleneck, small_experiment=small_experiment)]
 
