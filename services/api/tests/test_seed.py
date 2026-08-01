@@ -86,3 +86,16 @@ def test_ensure_demo_evolution_proposal_is_idempotent(db_session) -> None:
 
     second = _ensure_demo_evolution_proposal(db_session, user.id)
     assert second is False
+
+
+def test_ensure_demo_calendar_events_is_idempotent(db_session) -> None:
+    from app.repositories import calendar_repository
+    from app.workers.seed import _ensure_demo_calendar_events
+
+    user = _upsert_demo_user(db_session)
+    first = _ensure_demo_calendar_events(db_session, user.id)
+    assert first is True
+    assert len(calendar_repository.list_upcoming(db_session, user.id)) == 3
+
+    second = _ensure_demo_calendar_events(db_session, user.id)
+    assert second is False

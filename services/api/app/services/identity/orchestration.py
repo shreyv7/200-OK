@@ -18,8 +18,11 @@ from app.models.kpi_snapshot import KPISnapshotModel
 from app.repositories import evidence_repository, twin_repository
 from app.schemas.bottleneck import BottleneckPacket
 from app.schemas.gap import AttributeContribution, GapBreakdown
+from app.schemas.evidence import EvidenceEvent
+from app.schemas.identity import DeclaredSelf
 from app.services.identity.enrichment import enrich_evidence_event
 from app.services.identity.recompute import recompute_user_gap
+from app.services.identity.scoring.gap import GapResult
 
 WINDOW_DAYS = 21
 
@@ -33,6 +36,11 @@ class RecomputeResult:
     prior_gap_score: int | None
     timestamp: str
     invalidate_stack: bool
+    # Raw AIA inputs/outputs — exposed so other Backend wiring (e.g. M7's
+    # agent_runs.py) doesn't have to recompute from scratch.
+    gap_result: GapResult
+    declared_self: DeclaredSelf
+    events: list[EvidenceEvent]
 
 
 def _latest_snapshot(db: Session, user_id: str) -> KPISnapshotModel | None:
@@ -129,4 +137,7 @@ def recompute_and_persist(db: Session, user_id: str) -> RecomputeResult | None:
         prior_gap_score=prior_gap_score,
         timestamp=decision_packet.timestamp,
         invalidate_stack=decision_packet.invalidate_stack,
+        gap_result=gap_result,
+        declared_self=declared_self,
+        events=events,
     )

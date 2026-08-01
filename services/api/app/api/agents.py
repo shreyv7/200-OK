@@ -1,8 +1,8 @@
-"""Agent run endpoint. Owner: Backend. F8/F11 (prd.md), milestones.md M7."""
+"""Agent run endpoint. Owner: Backend. F8/F11 (prd.md), milestones.md M7/M8."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.di import get_current_user_id, get_db, get_llm_provider
@@ -26,9 +26,19 @@ def create_agent_run(
 
     if request.type == "weekly_report":
         weekly_report = agent_runs.generate_weekly_report(db, llm_provider, user_id)
+        if weekly_report is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No confirmed identity yet — complete onboarding first.",
+            )
         result_payload = weekly_report.model_dump(mode="json")
     else:
         evolution_proposal = agent_runs.generate_evolution_proposal(db, llm_provider, user_id)
+        if evolution_proposal is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No confirmed identity yet, or no evolution proposal was warranted.",
+            )
         result_payload = evolution_proposal.model_dump(mode="json")
 
     row = agent_run_repository.create(db, user_id, request.type, result_payload)

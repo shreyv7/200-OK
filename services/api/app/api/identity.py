@@ -1,18 +1,24 @@
-"""Identity read/edit endpoints. Owner: Backend. milestones.md M2/M3."""
+"""Identity read/edit endpoints. Owner: Backend. milestones.md M2/M3/M7/M8."""
 
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.di import get_current_user_id, get_db
 from app.repositories import evolution_repository, twin_repository
 from app.repositories.twin_repository import WeightSumError
-from app.schemas.agent_run import IdentityEvolutionProposal
 from app.schemas.identity import DeclaredSelf
 from app.schemas.onboarding import IdentityPatchRequest
+from app.services.identity.agent_runs import apply_proposed_changes
 
 router = APIRouter(tags=["identity"])
+
+
+class EvolutionStatusResponse(BaseModel):
+    proposalId: str
+    status: str
 
 
 @router.get("/identity", response_model=DeclaredSelf)
@@ -58,31 +64,38 @@ def accept_evolution(
     user_id: str = Depends(get_current_user_id),
 ) -> DeclaredSelf:
     """Accept -> versioned Twin vN; Gap uses the new version from here on
-    (milestones.md M7 merge gate 2). Never applied silently — this is the
-    only path that mutates the Declared Self from a proposal."""
+    (milestones.md M7 merge gate 2). Applies the proposal's add/remove/
+    reweight diff against the CURRENT confirmed attributes (M8 fix — the
+    original version replaced the whole attribute list, silently dropping
+    anything the proposal didn't mention)."""
     found = evolution_repository.get(db, proposal_id)
     if found is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown proposal")
     row, proposal = found
-    if proposal.status != "pending":
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Proposal already {proposal.status}")
+    if row.status != "pending":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Proposal already {row.status}")
 
-    declared_self = twin_repository.create_confirmed_version(db, user_id, proposal.proposedAttributes)
+    current = twin_repository.get_active_declared_self(db, user_id)
+    current_attributes = current.attributes if current is not None else []
+    merged_attributes = apply_proposed_changes(current_attributes, proposal.proposedChanges)
+
+    declared_self = twin_repository.create_confirmed_version(db, user_id, merged_attributes)
     evolution_repository.set_status(db, row, "accepted")
     return declared_self
 
 
-@router.post("/identity/evolution/{proposal_id}/reject", response_model=IdentityEvolutionProposal)
+@router.post("/identity/evolution/{proposal_id}/reject", response_model=EvolutionStatusResponse)
 def reject_evolution(
     proposal_id: str,
     db: Session = Depends(get_db),
-) -> IdentityEvolutionProposal:
+) -> EvolutionStatusResponse:
     """Reject -> no mutation whatsoever to identity data (merge gate 2)."""
     found = evolution_repository.get(db, proposal_id)
     if found is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown proposal")
     row, proposal = found
-    if proposal.status != "pending":
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Proposal already {proposal.status}")
+    if row.status != "pending":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Proposal already {row.status}")
 
-    return evolution_repository.set_status(db, row, "rejected")
+    updated = evolution_repository.set_status(db, row, "rejected")
+    return EvolutionStatusResponse(proposalId=updated.proposalId, status="rejected")

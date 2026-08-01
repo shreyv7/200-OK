@@ -1,98 +1,84 @@
-"""Weekly Report + Identity Evolution wiring. Owner: Backend. milestones.md M7 (F8/F11).
+"""Weekly Report + Identity Evolution wiring. Owner: Backend. milestones.md M7/M8 (F8/F11).
 
-Same pattern as M3's onboarding_orchestration.py: Backend builds the
-calling contract (load data, format AIA's prompt, call the real
-LLMProvider, validate a narrow extraction schema) — AIA owns refining
-the prompt content itself.
+M8 fix: this module originally hand-rolled its own prompt formatting
+against Backend-local duplicate schemas. AIA shipped real, complete
+generation logic (generate_weekly_report, propose_identity_evolution)
+in the same M7 merge — this module now just supplies their real inputs
+(DeclaredSelf, evidence window, GapResult) and calls them directly, per
+guidelines.md role isolation (AIA owns the reasoning; Backend owns
+persistence/wiring).
 """
 
 from __future__ import annotations
 
-import json
-
-from pydantic import BaseModel, ValidationError
-
-from app.prompts.loader import load_prompt
 from app.providers.llm.base import LLMProvider
-from app.repositories import evidence_repository, evolution_repository, twin_repository
-from app.schemas.agent_run import IdentityEvolutionProposal, WeeklyReport
+from app.repositories import evolution_repository
+from app.schemas.evolution import IdentityEvolutionProposal, ProposedChange
 from app.schemas.identity import IdentityAttribute
-
-WINDOW_EVENT_LIMIT = 200
-
-
-class _EvolutionExtraction(BaseModel):
-    """What the LLM actually returns for an evolution proposal — Backend
-    assigns id/userId/status/createdAt, not the model."""
-
-    proposedAttributes: list[IdentityAttribute]
-    citedEvidenceIds: list[str]
-    rationale: str
+from app.schemas.report import WeeklyReport
+from app.services.identity import orchestration
+from app.services.identity.evolution_agent import propose_identity_evolution
+from app.services.identity.weekly_report import generate_weekly_report as _generate_weekly_report
 
 
-def _evidence_summary(db, user_id: str) -> list[dict]:
-    rows = evidence_repository.list_window(db, user_id, limit=WINDOW_EVENT_LIMIT)
-    return [
-        {"id": r.id, "type": r.type, "category": r.category, "timestamp": r.timestamp.isoformat()}
-        for r in rows
-    ]
+def generate_weekly_report(db, llm_provider: LLMProvider, user_id: str) -> WeeklyReport | None:
+    result = orchestration.recompute_and_persist(db, user_id)
+    if result is None:
+        return None
 
-
-def generate_weekly_report(db, llm_provider: LLMProvider, user_id: str) -> WeeklyReport:
-    declared_self = twin_repository.get_active_declared_self(db, user_id)
-    events = _evidence_summary(db, user_id)
-
-    template = load_prompt("identity/weekly_report_v1")
-    schema = WeeklyReport.model_json_schema()
-    prompt = template.replace(
-        "{declared_self_json}",
-        json.dumps(declared_self.model_dump(mode="json") if declared_self else {}),
-    ).replace("{evidence_summary_json}", json.dumps(events)).replace(
-        "{output_schema_json}", json.dumps(schema)
+    return _generate_weekly_report(
+        user_id=user_id,
+        declared_self=result.declared_self,
+        events=result.events,
+        gap_result=result.gap_result,
+        prior_gap_score=result.prior_gap_score,
+        llm_provider=llm_provider,
     )
-    messages = [
-        {"role": "system", "content": "You are the Trellis Weekly Report Agent."},
-        {"role": "user", "content": prompt},
-    ]
-
-    raw = llm_provider.generate_structured(schema=schema, messages=messages)
-    return WeeklyReport.model_validate(raw)
 
 
 def generate_evolution_proposal(
     db, llm_provider: LLMProvider, user_id: str
-) -> IdentityEvolutionProposal:
-    declared_self = twin_repository.get_active_declared_self(db, user_id)
-    events = _evidence_summary(db, user_id)
+) -> IdentityEvolutionProposal | None:
+    result = orchestration.recompute_and_persist(db, user_id)
+    if result is None:
+        return None
 
-    template = load_prompt("identity/evolution_proposal_v1")
-    schema = _EvolutionExtraction.model_json_schema()
-    prompt = (
-        f"{template}\n\nDeclared Self: {json.dumps(declared_self.model_dump(mode='json') if declared_self else {})}"
-        f"\nEvidence window: {json.dumps(events)}\nRequired JSON Schema: {json.dumps(schema)}"
-    )
-    messages = [
-        {"role": "system", "content": "You are the Trellis Identity Evolution Agent."},
-        {"role": "user", "content": prompt},
-    ]
-
-    raw = llm_provider.generate_structured(schema=schema, messages=messages)
-    try:
-        extraction = _EvolutionExtraction.model_validate(raw)
-    except ValidationError as first_error:
-        messages.append(
-            {
-                "role": "user",
-                "content": f"Your previous output was invalid: {first_error}. Return valid JSON matching the schema exactly.",
-            }
-        )
-        raw_retry = llm_provider.generate_structured(schema=schema, messages=messages)
-        extraction = _EvolutionExtraction.model_validate(raw_retry)
-
-    return evolution_repository.create(
-        db,
+    proposal = propose_identity_evolution(
         user_id=user_id,
-        proposed_attributes=extraction.proposedAttributes,
-        cited_evidence_ids=extraction.citedEvidenceIds,
-        rationale=extraction.rationale,
+        declared_self=result.declared_self,
+        events=result.events,
+        gap_result=result.gap_result,
+        llm_provider=llm_provider,
     )
+    if proposal is None:
+        return None
+
+    return evolution_repository.create(db, proposal)
+
+
+def apply_proposed_changes(
+    current_attributes: list[IdentityAttribute], changes: list[ProposedChange]
+) -> list[IdentityAttribute]:
+    """Applies an add/remove/reweight diff against the current Declared
+    Self's attributes — never a flat replace (M8 fix: the original M7
+    accept endpoint replaced the whole attribute list, silently dropping
+    anything not mentioned in the proposal)."""
+    by_id = {a.id: a for a in current_attributes}
+
+    for change in changes:
+        if change.action == "remove":
+            by_id.pop(change.attributeId, None)
+        elif change.action == "reweight":
+            existing = by_id.get(change.attributeId)
+            if existing is not None and change.newWeight is not None:
+                by_id[change.attributeId] = existing.model_copy(update={"weight": change.newWeight})
+        elif change.action == "add":
+            by_id[change.attributeId] = IdentityAttribute(
+                id=change.attributeId,
+                label=change.attributeLabel,
+                weight=change.newWeight if change.newWeight is not None else 0.1,
+                targetWeeklyPoints=15.0,
+                markers=[],
+            )
+
+    return list(by_id.values())
