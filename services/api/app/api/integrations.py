@@ -56,7 +56,12 @@ def ensure_fresh_token(
 
     # Check if token is nearing expiration (within 5 minutes)
     now = datetime.now(timezone.utc)
-    if conn.expires_at is not None and conn.expires_at < (now + timedelta(minutes=5)):
+    expires_at = conn.expires_at
+    if expires_at is not None:
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at is not None and expires_at < (now + timedelta(minutes=5)):
+
         if provider == "google-calendar" and conn.refresh_token:
             client_id = settings.google_oauth_client_id or "stub-client-id"
             client_secret = settings.google_oauth_client_secret or "stub-client-secret"
