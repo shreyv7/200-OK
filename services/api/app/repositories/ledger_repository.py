@@ -83,14 +83,14 @@ def list_adaptations(db: Session, user_id: str) -> list[LedgerEntry]:
     the "adaptations" view of the full ledger history (milestones.md M6)."""
     stmt = (
         select(LedgerEntryModel)
-        .where(
-            LedgerEntryModel.user_id == user_id,
-            (LedgerEntryModel.unlearning_triggered.is_(True))
-            | (LedgerEntryModel.lens_weight_adjustment.is_not(None)),
-        )
+        .where(LedgerEntryModel.user_id == user_id)
         .order_by(LedgerEntryModel.timestamp.desc())
     )
-    return [_to_schema(r) for r in db.scalars(stmt)]
+    results: list[LedgerEntry] = []
+    for row in db.scalars(stmt):
+        if row.unlearning_triggered or row.lens_weight_adjustment:
+            results.append(_to_schema(row))
+    return results
 
 
 def count_recent_dismissals(
