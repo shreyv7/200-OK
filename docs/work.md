@@ -2,7 +2,7 @@
 
 **Derived from:** `docs/improvisedplan.md`, `docs/improvisedplan2.md`, `docs/improvisedplan3.md`, `docs/prd.md`, `docs/milestones.md`
 **Team:** 4 people — **A**, **B**, **C**, **D**
-**Repo:** `github.com/shreyv7/200-OK` · Backend: `services/api` (FastAPI) · Frontend: `FRONTEND/` (Vite)
+**Repo:** `github.com/shreyv7/200-OK` · Backend: `services/api` (FastAPI) · Frontend: `raghav/` (Vite / TanStack Start)
 
 ---
 
@@ -34,7 +34,7 @@ Goal: kill `demo-user-aarav`. Real multi-user signup/signin with Clerk + Google 
 - **A1. Clerk JWT verification (backend).** Replace the `501` branch in `app/core/security.py` with real JWKS verification (`PyJWT[crypto]` or `python-jose`): fetch Clerk JWKS, verify signature/issuer/audience, extract `sub`. Keep `auth_bypass` working only when `ENV=local` (for pytest).
 - **A2. User provisioning.** On first-seen `sub`, upsert a `User` row keyed by `clerk_subject`. Migration: add `email`, `last_login_at`, unique index on `clerk_subject`. Remove `demo_user_id` from every non-test code path.
 - **A3. Ownership audit (highest-risk task in this file).** Grep every usage of `get_current_user_id` and `demo_user_id` across `app/repositories/` and `app/services/`; confirm every read/write filters by the authenticated `user_id`. No endpoint may accept `user_id` from body/query when it's derivable from the token. Write an integration test that creates two users and asserts zero cross-contamination (independent gaps, ledgers, stacks).
-- **A4. Frontend auth.** Install the Clerk SDK in `FRONTEND/`, wrap the app root in `<ClerkProvider>`, add `/sign-in` + `/sign-up` routes, enable Google as a social connection in the Clerk dashboard, protect `/dashboard` `/feed` `/ledger` `/report`, attach the session JWT to every API call, replace the hardcoded "Aarav" sidebar card with the real signed-in user.
+- **A4. Frontend auth.** Install the Clerk SDK in `raghav/`, wrap the app root in `<ClerkProvider>`, add `/login` + `/signup` routes, enable Google as a social connection in the Clerk dashboard, protect `/dashboard` `/feed` `/ledger` `/report`, attach the session JWT to every API call, replace the hardcoded "Aarav" sidebar card with the real signed-in user.
 - **A5. Per-user onboarding.** New signup → `/onboarding` → Mirror Interview → Declared Self v1 for **that** user. No Aarav seed anywhere in the flow. Keep the seed script only behind an explicit dev/demo flag.
 - **A6. CORS + env config.** Add FRONTEND dev/prod origins to FastAPI; document `local` / `staging` / `prod` env matrices (which flags are legal where).
 
@@ -86,7 +86,7 @@ Goal: the Revealed Self updates from the user's actual digital life. Replace `Fi
 - **D3. Google Calendar connector (first — same OAuth vendor as sign-in).** `google-api-python-client` + real `normalize(raw) → EvidenceEvent` in `app/integrations/mcp/calendar/adapter.py`. Real upcoming events power F9 leverage triggers and `GET /api/v1/calendar/plan-view` (replace the seeded repository). Pre-event intervention scheduling via C's Celery beat.
 - **D4. GitHub connector (second — highest-value creation signal).** OAuth app; sync commits/PRs → `creation` evidence through the same pipeline, `simulated=False`. Backfill + incremental sync as Celery jobs (with C). Acceptance: a real commit by a connected account appears as real evidence and visibly moves the Gap score.
 - **D5. Honesty flag audit.** Confirm `simulated` in `app/services/evidence/service.py` is provider-driven, not hardcoded; connector events are `False`, fixtures/simulator stay `True`.
-- **D6. Frontend connections UI.** Settings/integrations page in `FRONTEND/`: connect / status / disconnect per provider, reconnect prompts, honesty badges on evidence sources. Simulator panel demoted to dev/QA-only.
+- **D6. Frontend connections UI.** Settings/integrations page in `raghav/`: connect / status / disconnect per provider, reconnect prompts, honesty badges on evidence sources. Simulator panel demoted to dev/QA-only.
 
 **Done when:** connect Calendar → real events in plan view; disconnect → ingest stops instantly; a live GitHub commit changes the Gap with no simulator inject; no plaintext token anywhere.
 
@@ -136,7 +136,7 @@ Hard dependencies: **D3/D4 need A1–A2 merged** (real user rows). **C5 sync sch
 
 - Branch names: `feat/a1-clerk-jwt`, `feat/b3-bedrock-failover`, `feat/c4-celery-worker`, `feat/d3-calendar-oauth`, … (`feat/<task-id>-<slug>`).
 - Everyone branches **from latest `main`**, pushes only to their feature branch, and opens a PR to `main`.
-- **Person A is the only person who merges to `main`.** After each merge, A pulls `main` locally and runs the full build (`docker compose up --build`, pytest, `npm run build` in `FRONTEND/`) to confirm the tree is green.
+- **Person A is the only person who merges to `main`.** After each merge, A pulls `main` locally and runs the full build (`docker compose up --build`, pytest, `npm run build` in `raghav/`) to confirm the tree is green.
 - B, C, D: `git pull origin main` at the start of every work session and before opening a PR (rebase your feature branch on `main` if it drifted).
 - CI (existing lint + pytest workflow) must be green on the PR before A merges. Tests keep running on fake providers — never put real keys in CI.
 - Never commit secrets. All real keys live in local `.env` (gitignored) and, later, the deploy platform's secret store.
