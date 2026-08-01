@@ -51,6 +51,7 @@ def _normalize_knowledge_candidate(candidate: dict[str, Any], index: int) -> dic
         "url": candidate.get("url"),
         "sourceBadge": document_source_to_badge(str(candidate.get("source", "curated_fallback"))),
         "extract": candidate.get("extract"),
+        "metadata": candidate.get("metadata", {}),
     }
 
 
@@ -83,6 +84,7 @@ def _candidate_to_element(
             capacity_tier=capacity_tier,
             tags=candidate.get("tags"),
         ),
+        metadata=candidate.get("metadata", {}),
     )
 
 

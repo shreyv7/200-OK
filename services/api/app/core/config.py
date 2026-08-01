@@ -91,7 +91,7 @@ class Settings(BaseSettings):
 
     # SearchProvider DI (milestones.md M4). Defaults to the deterministic
     # fake so tests/local dev never require a live Tavily key.
-    search_provider: Literal["fake", "tavily"] = "fake"
+    search_provider: Literal["fake", "tavily", "youtube", "combined"] = "fake"
     tavily_api_key: str | None = None
     tavily_timeout_seconds: float = 1.5
 
