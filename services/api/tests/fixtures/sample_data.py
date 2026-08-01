@@ -84,3 +84,20 @@ def sample_coordinator_state() -> dict:
         "evidence_id": None,
         "hypothesis_id": "hyp-fixture-001",
     }
+
+
+def sample_gap_snapshot(*, gap_delta: float = 6.0, gap_score: int = 68) -> "GapSnapshot":
+    from app.services.recommendation.gap_snapshot import GapSnapshot
+
+    prior = int(gap_score - gap_delta)
+    return GapSnapshot(
+        userId="user-aarav",
+        gapScore=gap_score,
+        gapDelta=gap_delta,
+        alignment=100 - gap_score,
+        createConsumeRatio=0.42,
+        consistency=0.55,
+        momentum=-2.0,
+        timestamp="2026-08-01T00:00:00Z",
+        priorGapScore=prior,
+    )
