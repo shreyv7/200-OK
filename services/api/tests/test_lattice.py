@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from fastapi.testclient import TestClient
 
 from app.core.config import get_settings
-from app.integrations.mcp.trellis.adapter import FixtureTrellisAdapter
+from app.integrations.mcp.github.adapter import FixtureGithubAdapter
 from app.main import app
 from app.models.user import User
 from app.repositories import twin_repository
@@ -13,7 +13,7 @@ from app.schemas.evidence import RawMCPPayload
 from app.workers.seed import _DECLARED_ATTRIBUTES
 
 client = TestClient(app)
-_adapter = FixtureTrellisAdapter()
+_adapter = FixtureGithubAdapter()
 
 
 def _ensure_demo_twin(db_session) -> None:
