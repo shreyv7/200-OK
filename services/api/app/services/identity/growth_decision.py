@@ -8,7 +8,13 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 from app.services.decision.packet import BottleneckCandidate
-from app.services.identity.scoring.constants import CAPACITY_FULL_MIN, CAPACITY_LIGHT_MIN, GAP_DELTA_INVALIDATION_THRESHOLD
+from app.services.identity.scoring.constants import (
+    CAPACITY_FULL_MIN,
+    CAPACITY_LIGHT_MIN,
+    GAP_DELTA_INVALIDATION_THRESHOLD,
+    HIGH_DISMISSAL_RATE_THRESHOLD,
+    INTERVENTION_DAILY_CAP,
+)
 from app.services.identity.scoring.gap import CreateConsumeResult, GapResult
 
 LOW_CONFIDENCE_THRESHOLD = 0.65
@@ -29,6 +35,8 @@ def evaluate_growth_decision(
     create_consume: Optional[CreateConsumeResult] = None,
     capacity_pct: int = 100,
     prior_bottleneck_label: Optional[str] = None,
+    dismissal_rate: float = 0.0,
+    interventions_today: int = 0,
 ) -> GrowthDecision:
     """Evaluates whether stack re-curation is warranted and at what intensity."""
     gap_delta = (gap_result.gap_score - prior_gap_score) if prior_gap_score is not None else 0
@@ -44,6 +52,19 @@ def evaluate_growth_decision(
         intensity = "light"
     else:
         intensity = "micro"
+
+    # High dismissal rate downgrades full intensity to light
+    if dismissal_rate >= HIGH_DISMISSAL_RATE_THRESHOLD and intensity == "full":
+        intensity = "light"
+
+    # Budget exhaustion check
+    if interventions_today >= INTERVENTION_DAILY_CAP:
+        return GrowthDecision(
+            should_recurate=False,
+            curation_intensity=intensity,
+            low_confidence_flag=low_confidence,
+            reason="Daily intervention budget exhausted (5/5 reached)",
+        )
 
     # Re-curation trigger rules
     reasons: List[str] = []
@@ -73,3 +94,4 @@ def evaluate_growth_decision(
         low_confidence_flag=low_confidence,
         reason=reason_str,
     )
+

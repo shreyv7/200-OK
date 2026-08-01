@@ -49,3 +49,9 @@ DEFAULT_DECLARED_TARGET: float = 15.0
 
 # Gap score delta threshold to trigger stack invalidation
 GAP_DELTA_INVALIDATION_THRESHOLD: float = 5.0
+
+# Guardian / Intervention budget constants per PRD §6 F6
+INTERVENTION_DAILY_CAP: int = 5
+INTERVENTION_MIN_SPACING_HOURS: float = 1.0
+HIGH_DISMISSAL_RATE_THRESHOLD: float = 0.6
+

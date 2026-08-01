@@ -36,6 +36,11 @@ from app.services.identity.growth_decision import (
     GrowthDecision,
     evaluate_growth_decision,
 )
+from app.services.identity.guardian_decision import (
+    GuardianAction,
+    GuardianDecision,
+    evaluate_guardian_action,
+)
 from app.services.identity.recompute import (
     recompute_user_gap,
 )
@@ -68,6 +73,9 @@ __all__ = [
     "diagnose_bottleneck_v1",
     "GrowthDecision",
     "evaluate_growth_decision",
+    "GuardianAction",
+    "GuardianDecision",
+    "evaluate_guardian_action",
     "recompute_user_gap",
     "InterviewTurn",
     "InterviewState",
