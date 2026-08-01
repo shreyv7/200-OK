@@ -35,19 +35,16 @@ class Settings(BaseSettings):
     # Token encryption key for OAuth credentials (Fernet symmetric key)
     token_encryption_key: str | None = None
 
-
-    # Token encryption key for OAuth credentials (Fernet symmetric key)
-    token_encryption_key: str | None = None
-
     # Google OAuth settings
-    google_oauth_client_id: str | None = "stub-google-client-id"
-    google_oauth_client_secret: str | None = "stub-google-client-secret"
+    google_oauth_client_id: str | None = None
+    google_oauth_client_secret: str | None = None
     google_oauth_redirect_uri: str = "http://localhost:8000/api/v1/integrations/google-calendar/callback"
 
     # GitHub OAuth settings
-    github_oauth_client_id: str | None = "stub-github-client-id"
-    github_oauth_client_secret: str | None = "stub-github-client-secret"
+    github_oauth_client_id: str | None = None
+    github_oauth_client_secret: str | None = None
     github_oauth_redirect_uri: str = "http://localhost:8000/api/v1/integrations/github/callback"
+
 
 
 

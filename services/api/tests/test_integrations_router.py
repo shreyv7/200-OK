@@ -33,13 +33,24 @@ def override_get_db():
         db.close()
 
 
+def override_get_settings():
+    s = get_settings()
+    s.google_oauth_client_id = "test-google-id"
+    s.google_oauth_client_secret = "test-google-secret"
+    s.github_oauth_client_id = "test-github-id"
+    s.github_oauth_client_secret = "test-github-secret"
+    return s
+
+
 @pytest.fixture(autouse=True)
 def setup_db():
     Base.metadata.create_all(bind=engine)
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_settings] = override_get_settings
     yield
     Base.metadata.drop_all(bind=engine)
     app.dependency_overrides.clear()
+
 
 
 @pytest.fixture

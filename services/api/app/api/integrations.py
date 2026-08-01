@@ -139,7 +139,12 @@ def connect_integration(
     state = generate_oauth_state(user_id, provider)
 
     if provider == "google-calendar":
-        client_id = settings.google_oauth_client_id or "stub-google-client-id"
+        client_id = settings.google_oauth_client_id
+        if not client_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="GOOGLE_OAUTH_CLIENT_ID is not configured in .env",
+            )
         redirect_uri = settings.google_oauth_redirect_uri
         scope = "https://www.googleapis.com/auth/calendar.readonly"
         params = {
@@ -153,7 +158,12 @@ def connect_integration(
         }
         auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}"
     elif provider == "github":
-        client_id = settings.github_oauth_client_id or "stub-github-client-id"
+        client_id = settings.github_oauth_client_id
+        if not client_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="GITHUB_OAUTH_CLIENT_ID is not configured in .env",
+            )
         redirect_uri = settings.github_oauth_redirect_uri
         scope = "repo,read:user"
         params = {
@@ -184,8 +194,13 @@ def oauth_callback(
     repo = IntegrationRepository(db)
 
     if provider == "google-calendar":
-        client_id = settings.google_oauth_client_id or "stub-google-client-id"
-        client_secret = settings.google_oauth_client_secret or "stub-google-client-secret"
+        client_id = settings.google_oauth_client_id
+        client_secret = settings.google_oauth_client_secret
+        if not client_id or not client_secret:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="GOOGLE_OAUTH_CLIENT_ID or GOOGLE_OAUTH_CLIENT_SECRET not configured in .env",
+            )
         redirect_uri = settings.google_oauth_redirect_uri
         tokens = exchange_google_code(
             code=code,
@@ -194,8 +209,13 @@ def oauth_callback(
             client_secret=client_secret,
         )
     elif provider == "github":
-        client_id = settings.github_oauth_client_id or "stub-github-client-id"
-        client_secret = settings.github_oauth_client_secret or "stub-github-client-secret"
+        client_id = settings.github_oauth_client_id
+        client_secret = settings.github_oauth_client_secret
+        if not client_id or not client_secret:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="GITHUB_OAUTH_CLIENT_ID or GITHUB_OAUTH_CLIENT_SECRET not configured in .env",
+            )
         redirect_uri = settings.github_oauth_redirect_uri
         tokens = exchange_github_code(
             code=code,
@@ -205,6 +225,7 @@ def oauth_callback(
         )
     else:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Unsupported provider")
+
 
     repo.upsert_connection(
         user_id=user_id,
