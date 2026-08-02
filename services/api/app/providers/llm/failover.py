@@ -48,3 +48,24 @@ class FailoverLLMProvider(LLMProvider):
             result = self._fallback.generate_structured(schema, messages, opts)
             self._last_serving_provider = self._fallback
             return result
+
+    def generate_structured_from_image(
+        self,
+        schema: dict[str, Any],
+        prompt: str,
+        image_bytes: bytes,
+        mime_type: str = "image/png",
+        opts: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        try:
+            result = self._primary.generate_structured_from_image(
+                schema, prompt, image_bytes, mime_type, opts
+            )
+            self._last_serving_provider = self._primary
+            return result
+        except (LLMProviderUnavailable, NotImplementedError):
+            result = self._fallback.generate_structured_from_image(
+                schema, prompt, image_bytes, mime_type, opts
+            )
+            self._last_serving_provider = self._fallback
+            return result

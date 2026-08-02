@@ -13,22 +13,14 @@ export function IntegrationsPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-border/80 bg-secondary/30 p-4 font-mono text-xs text-muted-foreground">
-        <p className="font-medium text-foreground">Honest Data Engine Active</p>
-        <p className="mt-1 leading-relaxed">
-          Connecting your digital sources streams real evidence directly into Trellis.
-          Synced events bypass simulation, update your Revealed Self, and dynamically drive your Identity Gap score.
-        </p>
-      </div>
-
       <CompanionPanel />
 
       {/* Screen Time & Device Telemetry Drop Box */}
       <ScreenTimePanel />
 
       {error && (
-        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 font-mono text-xs text-destructive">
-          Failed to load integration status. Sign in, then ensure the API is running (default http://localhost:8002).
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+          Couldn’t load integrations. Check that you’re signed in and the API is running.
         </div>
       )}
 
@@ -36,7 +28,7 @@ export function IntegrationsPanel() {
         <IntegrationConnectionCard
           provider="google-calendar"
           title="Google Calendar"
-          description="Syncs real upcoming meetings, talks, and presentations to trigger pre-event leverage rehearsal moments (attended_experience)."
+          description="Sync meetings into your evidence feed."
           icon={<Calendar className="h-5 w-5 text-signal" />}
           status={getStatus("google-calendar")}
           isLoading={isLoading}
@@ -45,7 +37,7 @@ export function IntegrationsPanel() {
         <IntegrationConnectionCard
           provider="github"
           title="GitHub"
-          description="Syncs real commits and merged Pull Requests directly into your creation evidence feed (github_commit & published_artifact)."
+          description="Sync commits and PRs as creation evidence."
           icon={<Github className="h-5 w-5 text-foreground" />}
           status={getStatus("github")}
           isLoading={isLoading}
@@ -54,7 +46,7 @@ export function IntegrationsPanel() {
         <IntegrationConnectionCard
           provider="notion"
           title="Notion"
-          description="Syncs recent Notion page edits into creation evidence so notes and drafts move your Revealed Self and Gap score."
+          description="Sync page edits as creation evidence."
           icon={<NotebookPen className="h-5 w-5 text-foreground" />}
           status={getStatus("notion")}
           isLoading={isLoading}

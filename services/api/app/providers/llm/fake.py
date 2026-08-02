@@ -54,4 +54,38 @@ class FakeLLMProvider(LLMProvider):
         if "attributes" in properties:
             return dict(_DEFAULT_DECLARED_SELF_ATTRIBUTES)
 
+        if "apps" in properties:
+            return {
+                "apps": [
+                    {"appName": "VS Code", "durationMinutes": 105},
+                    {"appName": "Figma", "durationMinutes": 40},
+                    {"appName": "YouTube", "durationMinutes": 35},
+                    {"appName": "Instagram", "durationMinutes": 95},
+                    {"appName": "Twitter", "durationMinutes": 45},
+                ],
+                "sourceLabel": "iOS Screen Time",
+            }
+
         return {"status": "ok"}
+
+    def generate_structured_from_image(
+        self,
+        schema: dict[str, Any],
+        prompt: str,
+        image_bytes: bytes,
+        mime_type: str = "image/png",
+        opts: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        self.calls.append(
+            {
+                "schema": schema,
+                "prompt": prompt,
+                "mime_type": mime_type,
+                "image_bytes": len(image_bytes),
+                "opts": opts or {},
+                "mode": "image",
+            }
+        )
+        if self.response is not None:
+            return dict(self.response)
+        return self.generate_structured(schema, [{"role": "user", "content": prompt}], opts)

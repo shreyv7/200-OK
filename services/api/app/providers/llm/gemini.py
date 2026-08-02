@@ -167,3 +167,73 @@ class GeminiLLMProvider(LLMProvider):
                 f"All Gemini keys in the pool are rate-limited or unavailable: {last_exc}"
             ) from last_exc
         raise LLMProviderUnavailable("All Gemini API keys are cooling down; no healthy key available")
+
+    def generate_structured_from_image(
+        self,
+        schema: dict[str, Any],
+        prompt: str,
+        image_bytes: bytes,
+        mime_type: str = "image/png",
+        opts: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """OCR + structured extract from a Screen Time / Digital Wellbeing screenshot."""
+        from google.genai import errors, types
+
+        config = types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_json_schema=schema,
+        )
+        contents = [
+            types.Content(
+                role="user",
+                parts=[
+                    types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+                    types.Part.from_text(text=prompt),
+                ],
+            )
+        ]
+
+        now = time.monotonic()
+        start = self._next_index
+        self._next_index = (self._next_index + 1) % len(self._slots)
+        order = self._slots[start:] + self._slots[:start]
+
+        last_exc: Exception | None = None
+        for slot in order:
+            if slot.cooldown_until > now:
+                continue
+            client = self._client_for(slot)
+            try:
+                response = client.models.generate_content(
+                    model=self._model, contents=contents, config=config
+                )
+            except errors.APIError as exc:
+                slot.failure_count += 1
+                slot.last_error = f"{exc.code} {exc.status}"
+                last_exc = exc
+                if exc.code == 429 or isinstance(exc, errors.ServerError):
+                    slot.cooldown_until = now + _RATE_LIMIT_COOLDOWN_SECONDS
+                    continue
+                if exc.code in (401, 403):
+                    slot.cooldown_until = now + _INVALID_KEY_COOLDOWN_SECONDS
+                    continue
+                raise
+            else:
+                slot.success_count += 1
+                usage = getattr(response, "usage_metadata", None)
+                self.last_usage = (
+                    LLMUsage(
+                        input_tokens=usage.prompt_token_count,
+                        output_tokens=usage.candidates_token_count,
+                        total_tokens=usage.total_token_count,
+                    )
+                    if usage is not None
+                    else None
+                )
+                return json.loads(response.text)
+
+        if last_exc is not None:
+            raise LLMProviderUnavailable(
+                f"All Gemini keys in the pool are rate-limited or unavailable: {last_exc}"
+            ) from last_exc
+        raise LLMProviderUnavailable("All Gemini API keys are cooling down; no healthy key available")

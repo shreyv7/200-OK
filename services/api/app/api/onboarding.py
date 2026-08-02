@@ -22,7 +22,18 @@ def onboarding_turn(
 ) -> OnboardingTurnResponse:
     try:
         return onboarding_orchestration.advance_turn(
-            db, llm_provider, user_id, request.sessionId, request.message
+            db,
+            llm_provider,
+            user_id,
+            request.sessionId,
+            request.message,
+            answer_kind=request.answerKind,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        detail = str(exc)
+        code = (
+            status.HTTP_400_BAD_REQUEST
+            if "empty" in detail.lower()
+            else status.HTTP_404_NOT_FOUND
+        )
+        raise HTTPException(status_code=code, detail=detail) from exc

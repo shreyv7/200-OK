@@ -16,13 +16,13 @@ import { useTrellis } from "@/lib/trellis/store";
 export const Route = createFileRoute("/report")({
   head: () => ({
     meta: [
-      { title: "Weekly Becoming Report — Trellis" },
+      { title: "About You — Trellis" },
       {
         name: "description",
         content:
           "A narrative account of the week's identity movement, plus an optional confirmable Identity Evolution proposal.",
       },
-      { property: "og:title", content: "Weekly Becoming Report — Trellis" },
+      { property: "og:title", content: "About You — Trellis" },
     ],
   }),
   component: ReportPage,
@@ -75,10 +75,9 @@ function Report() {
     "Updated Declared Self";
 
   return (
-    <AppShell title="Weekly Report">
+    <AppShell title="About You">
       <div className="mx-auto max-w-2xl space-y-8 pb-20">
         <header className="space-y-3">
-          <p className="label-eyebrow text-signal">Weekly Becoming · F8</p>
           <h1 className="font-display text-3xl sm:text-4xl font-medium tracking-tight leading-[1.1]">
             Identity movement, not hours logged.
           </h1>
@@ -90,9 +89,6 @@ function Report() {
 
         {!report && (
           <div className="rounded-3xl border border-border bg-card p-8 text-center space-y-5">
-            <p className="text-sm text-muted-foreground">
-              Generate from the current 21-day evidence window and Declared Self.
-            </p>
             <button
               onClick={() => void handleGenerate()}
               disabled={generating}
@@ -153,12 +149,6 @@ function Report() {
                   <Stat label="Start gap" value={String(report.gapScoreStart ?? "—")} />
                   <Stat label="End gap" value={String(report.gapScoreEnd)} />
                 </dl>
-
-                <p className="mt-6 font-mono text-[10px] text-muted-foreground">
-                  {report.simulated
-                    ? "Narrative may include simulated framing · generated via Gemini"
-                    : "Narrative from live evidence · generated via Gemini"}
-                </p>
               </div>
             </motion.article>
           )}

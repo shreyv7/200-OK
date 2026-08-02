@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Trellis Companion - Behavioral Telemetry Collector
 // @namespace    http://trellis.ai/
-// @version      1.0.2
+// @version      1.0.3
 // @description  Automatic behavioral telemetry tracking for TRELLIS Evidence Pipeline
 // @author       TRELLIS Team
 // @match        https://*.instagram.com/*
@@ -33,7 +33,7 @@
   // =========================================================================
   // CONFIGURATION & CONSTANTS
   // =========================================================================
-  const VERSION = "1.0.2";
+  const VERSION = "1.0.3";
   const DEBUG = false; // Toggle debug console logging
   const BACKEND_BASE_URL = "http://localhost:8002"; // Pre-configured backend API URL
   const EVIDENCE_ENDPOINT = "/api/v1/evidence";
@@ -91,6 +91,12 @@
     }
   }
 
+  function requestAuthTokenFromApp() {
+    // Ask the Trellis web app to re-broadcast a fresh Clerk JWT.
+    document.dispatchEvent(new CustomEvent("trellis:request-auth-token", { bubbles: true }));
+    window.postMessage({ type: "TRELLIS_REQUEST_AUTH_TOKEN" }, "*");
+  }
+
   function setupCompanionDetection() {
     try {
       replyCompanionPong();
@@ -109,6 +115,14 @@
       document.addEventListener("trellis:set-auth-token", (event) => {
         storeAuthToken(event.detail && event.detail.token);
       });
+
+      // On Trellis origins, immediately ask the app for a token after install/refresh.
+      const host = (window.location.hostname || "").toLowerCase();
+      if (TRELLIS_APP_HOSTS.includes(host)) {
+        requestAuthTokenFromApp();
+        window.setTimeout(requestAuthTokenFromApp, 800);
+        window.setTimeout(requestAuthTokenFromApp, 2500);
+      }
 
       logDebug("Companion detection + auth bridge registered.");
     } catch (e) {

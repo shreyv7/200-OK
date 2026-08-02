@@ -2,8 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { LatticeMark } from "@/components/trellis/Lattice";
 import { EditorialInterventionFlow } from "@/components/trellis/EditorialInterventionFlow";
 import { LatticeDivider } from "@/components/trellis/LatticeDivider";
-import { MorphingPersona } from "@/components/trellis/MorphingPersona";
-import { ArrowRight, ChevronRight } from "lucide-react";
+import { PersonaGrid3D } from "@/components/trellis/PersonaGrid3D";
+import { ArrowRight } from "lucide-react";
 import { motion } from "motion/react";
 
 export const Route = createFileRoute("/")({
@@ -43,21 +43,12 @@ function Landing() {
             </span>
           </Link>
 
-          <div className="flex items-center gap-6">
-            <Link
-              to="/login"
-              className="hidden sm:inline font-mono text-[11px] text-muted-foreground hover:text-foreground transition-colors tracking-[0.08em]"
-            >
-              Log in
-            </Link>
-            <Link
-              to="/signup"
-              className="group inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2 text-xs font-medium text-background transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
-            >
-              <span>Start here</span>
-              <ChevronRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
-            </Link>
-          </div>
+          <Link
+            to="/login"
+            className="inline-flex items-center rounded-full bg-foreground px-5 py-2 font-mono text-[11px] font-semibold tracking-[0.08em] text-background transition-all duration-200 hover:-translate-y-0.5 hover:bg-foreground/90 hover:shadow-md"
+          >
+            Log in
+          </Link>
         </div>
       </header>
 
@@ -71,7 +62,7 @@ function Landing() {
           <p className="font-display text-5xl sm:text-6xl md:text-7xl font-medium tracking-tight text-foreground leading-[0.95]">
             Trellis
           </p>
-          <p className="mt-4 font-mono text-[11px] tracking-[0.2em] text-signal uppercase">
+          <p className="mt-5 font-old-italic text-[33px] sm:text-[36px] leading-none tracking-normal text-signal normal-case">
             An agentic growth curator
           </p>
 
@@ -85,23 +76,13 @@ function Landing() {
             stack that closes it.
           </p>
 
-          <div className="mt-10 flex flex-wrap items-center gap-6">
-            <Link
-              to="/onboarding"
-              className="group inline-flex items-center gap-3 rounded-full bg-foreground px-7 py-3.5 text-sm font-medium text-background transition-all hover:bg-foreground/90"
-            >
-              <span>Begin the Mirror Interview</span>
-              <ArrowRight
-                className="h-4 w-4 transition-transform group-hover:translate-x-1"
-                strokeWidth={1.75}
-              />
-            </Link>
+          <div className="mt-10 flex flex-wrap items-center gap-8">
             <Link
               to="/feed"
-              className="group relative inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              className="group relative inline-flex items-center gap-2.5 text-base sm:text-lg font-semibold text-muted-foreground transition-colors hover:text-foreground"
             >
               <span>See the Catch</span>
-              <ArrowRight className="h-3.5 w-3.5 opacity-40 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
+              <ArrowRight className="h-5 w-5 opacity-40 transition-all group-hover:translate-x-1 group-hover:opacity-100" strokeWidth={2.25} />
             </Link>
           </div>
         </motion.div>
@@ -110,9 +91,9 @@ function Landing() {
           initial={{ opacity: 0, y: 28 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.95, delay: 0.15, ease: flagshipEase }}
-          className="mx-auto w-full max-w-[17rem] lg:max-w-[21.5rem]"
+          className="mx-auto w-full max-w-[22rem] lg:max-w-[26rem]"
         >
-          <MorphingPersona />
+          <PersonaGrid3D />
         </motion.div>
       </section>
 

@@ -38,8 +38,19 @@ def mark_completed(db: Session, session_id: str) -> None:
         db.commit()
 
 
-def append_turn(db: Session, session_id: str, role: str, content: str) -> OnboardingTurn:
-    turn = OnboardingTurn(session_id=session_id, role=role, content=content)
+def append_turn(
+    db: Session,
+    session_id: str,
+    role: str,
+    content: str,
+    answer_kind: str | None = None,
+) -> OnboardingTurn:
+    turn = OnboardingTurn(
+        session_id=session_id,
+        role=role,
+        content=content,
+        answer_kind=answer_kind if role == "user" else None,
+    )
     db.add(turn)
     db.commit()
     db.refresh(turn)

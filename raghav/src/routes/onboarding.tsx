@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight, Check, Mic, MicOff, Send } from "lucide-react";
 
 import { RequireAuth } from "@/authentication";
 import { LatticeMark } from "@/components/trellis/Lattice";
+import { useSpeechToText } from "@/hooks/useSpeechToText";
 import { ApiError } from "@/lib/api/client";
 import * as api from "@/lib/api/endpoints";
 import { mapDeclaredSelf, type OnboardingDeclaredView } from "@/lib/api/mappers";
@@ -322,15 +323,14 @@ interface PersonaOption {
   id: string;
   icon: string;
   title: string;
-  badge: string;
 }
 
 const PERSONA_OPTIONS: PersonaOption[] = [
-  { id: "ai_builder",       icon: "🚀", title: "AI Product Builder & Founder",    badge: "Shipping & Code Focus" },
-  { id: "keynote_speaker",  icon: "🎤", title: "Keynote Speaker & Public Advocate", badge: "Stage & Communication Focus" },
-  { id: "technical_author", icon: "✍️",  title: "Technical Author & Researcher",   badge: "Writing & Research Focus" },
-  { id: "product_designer", icon: "🎨", title: "Product Designer & UI Creator",    badge: "Design Systems & UX Focus" },
-  { id: "polymath",         icon: "🧠", title: "Polymath & Discipline Scholar",    badge: "Deep Work & Habits Focus" },
+  { id: "ai_builder",       icon: "🚀", title: "AI Product Builder & Founder" },
+  { id: "keynote_speaker",  icon: "🎤", title: "Keynote Speaker & Public Advocate" },
+  { id: "technical_author", icon: "✍️",  title: "Technical Author & Researcher" },
+  { id: "product_designer", icon: "🎨", title: "Product Designer & UI Creator" },
+  { id: "polymath",         icon: "🧠", title: "Polymath & Discipline Scholar" },
 ];
 
 type Phase = "chat" | "extracting" | "confirm";
@@ -349,7 +349,10 @@ function Onboarding() {
   // ── Chat state ──────────────────────────────────────────────────────────────
   const [phase, setPhase] = useState<Phase>("chat");
   const [qIndex, setQIndex] = useState(0);
-  const [answers, setAnswers] = useState<string[]>([]);
+  const [answers, setAnswers] = useState<
+    Array<{ text: string; kind: "preset" | "freeform" }>
+  >([]);
+  const [customAnswer, setCustomAnswer] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "m0",
@@ -368,12 +371,45 @@ function Onboarding() {
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const speechBaseRef = useRef("");
+
+  const {
+    supported: speechSupported,
+    listening,
+    error: speechError,
+    toggle: toggleListening,
+    stop: stopListening,
+  } = useSpeechToText({
+    lang: "en-US",
+    continuous: true,
+    onResult: (transcript, isFinal) => {
+      const base = speechBaseRef.current;
+      const joined = [base, transcript].filter(Boolean).join(" ").trim();
+      setCustomAnswer(joined.slice(0, 2000));
+      if (isFinal) {
+        speechBaseRef.current = joined.slice(0, 2000);
+      }
+    },
+  });
 
   useEffect(() => {
     const el = chatScrollRef.current;
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages, typing, phase]);
+
+  useEffect(() => {
+    if (phase !== "chat" || typing) return;
+    const id = window.setTimeout(() => textareaRef.current?.focus(), 120);
+    return () => window.clearTimeout(id);
+  }, [phase, typing, qIndex]);
+
+  useEffect(() => {
+    // Fresh utterance base whenever the question changes
+    speechBaseRef.current = "";
+    stopListening();
+  }, [qIndex, stopListening]);
 
   // ── Role selection ──────────────────────────────────────────────────────────
   const handleSelectRole = (persona: PersonaOption) => {
@@ -384,6 +420,7 @@ function Onboarding() {
     setPhase("chat");
     setQIndex(0);
     setAnswers([]);
+    setCustomAnswer("");
     setDraftApi(null);
     setDraftDeclared(null);
     setConfirmError(null);
@@ -404,16 +441,22 @@ function Onboarding() {
   };
 
   const currentQ = activeQuestions[qIndex]!;
+  const trimmedCustom = customAnswer.trim();
+  const canSubmitCustom = trimmedCustom.length >= 2 && !typing && phase === "chat";
 
   // ── Answer selection ────────────────────────────────────────────────────────
-  const selectAnswer = (answer: string) => {
-    if (typing || phase !== "chat") return;
+  const selectAnswer = (answer: string, kind: "preset" | "freeform") => {
+    const cleaned = answer.trim();
+    if (!cleaned || typing || phase !== "chat") return;
 
-    const nextAnswers = [...answers, answer];
+    const nextAnswers = [...answers, { text: cleaned, kind }];
     setAnswers(nextAnswers);
+    setCustomAnswer("");
+    speechBaseRef.current = "";
+    stopListening();
     setMessages((prev) => [
       ...prev,
-      { id: `u_${qIndex}`, role: "user", text: answer },
+      { id: `u_${qIndex}`, role: "user", text: cleaned },
     ]);
 
     const nextIndex = qIndex + 1;
@@ -440,8 +483,12 @@ function Onboarding() {
             let sessionId = boot.sessionId;
             let draft: ApiDeclaredSelf | null = null;
 
-            for (const msg of nextAnswers) {
-              const turn = await api.onboardingTurn({ sessionId, message: msg });
+            for (const entry of nextAnswers) {
+              const turn = await api.onboardingTurn({
+                sessionId,
+                message: entry.text,
+                answerKind: entry.kind,
+              });
               sessionId = turn.sessionId;
               if (turn.draft) draft = turn.draft;
             }
@@ -467,6 +514,24 @@ function Onboarding() {
           setTimeout(() => setPhase("confirm"), 1200);
         })();
       }, 500);
+    }
+  };
+
+  const submitCustomAnswer = (event?: FormEvent) => {
+    event?.preventDefault();
+    if (!canSubmitCustom) return;
+    selectAnswer(trimmedCustom, "freeform");
+  };
+
+  const skipQuestion = () => {
+    if (typing || phase !== "chat") return;
+    selectAnswer("Skipped", "freeform");
+  };
+
+  const onCustomKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      submitCustomAnswer();
     }
   };
 
@@ -514,38 +579,30 @@ function Onboarding() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.96, opacity: 0, y: 8 }}
               transition={{ duration: 0.3, ease }}
-              className="w-full max-w-md rounded-3xl border border-border bg-card p-6 shadow-2xl"
+              className="w-full max-w-lg rounded-[1.75rem] border border-border bg-card p-7 sm:p-8 shadow-2xl"
             >
-              <div className="mb-5 space-y-1">
+              <div className="mb-6 space-y-2">
                 <p className="label-eyebrow text-signal">Choose Target Role</p>
-                <h2 className="font-display text-2xl font-medium tracking-tight">
+                <h2 className="font-display text-3xl sm:text-[2.15rem] font-bold tracking-tight leading-[1.1]">
                   Who do you want to become?
                 </h2>
-                <p className="text-xs text-muted-foreground">
-                  Select your target archetype. Your interview questions will be tailored to this goal.
-                </p>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {PERSONA_OPTIONS.map((persona) => (
                   <button
                     key={persona.id}
                     type="button"
                     onClick={() => handleSelectRole(persona)}
-                    className="group w-full text-left rounded-2xl border border-border/80 bg-background/60 px-4 py-3.5 hover:border-signal/50 hover:bg-signal/5 transition-all flex items-center justify-between"
+                    className="group w-full text-left rounded-2xl border border-border/80 bg-background/60 px-5 py-4 hover:border-signal/50 hover:bg-signal/5 transition-all flex items-center justify-between"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="text-lg">{persona.icon}</span>
-                      <div>
-                        <p className="text-sm font-medium text-foreground group-hover:text-signal transition-colors">
-                          {persona.title}
-                        </p>
-                        <p className="font-mono text-[10px] text-muted-foreground">
-                          {persona.badge}
-                        </p>
-                      </div>
+                    <div className="flex items-center gap-3.5">
+                      <span className="text-xl">{persona.icon}</span>
+                      <p className="text-base font-semibold text-foreground group-hover:text-signal transition-colors">
+                        {persona.title}
+                      </p>
                     </div>
-                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                    <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
                   </button>
                 ))}
               </div>
@@ -555,20 +612,56 @@ function Onboarding() {
       </AnimatePresence>
 
       <header className="z-40 shrink-0 border-b border-border bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-5 py-3.5">
+        <div className="mx-auto flex max-w-4xl items-center px-5 py-3">
           <div className="flex items-center gap-2.5">
             <LatticeMark className="h-4 w-4" />
             <span className="font-mono text-[11px] font-semibold tracking-[0.24em] uppercase">
               TRELLIS
             </span>
           </div>
-          <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-[0.16em]">
-            Mirror Interview · F1
-          </p>
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-5 py-4 sm:py-5">
+      <main className="relative z-10 flex min-h-0 w-full flex-1 overflow-hidden">
+        {/* Extreme-left stacked wordmark — absolute so it never eats vertical space */}
+        {(phase === "chat" || phase === "extracting") && (
+          <aside
+            aria-hidden
+            className="pointer-events-none absolute left-3 top-3 z-0 sm:left-5 sm:top-4"
+          >
+            <p className="font-old-italic text-[clamp(2.75rem,8vw,5.5rem)] leading-[0.8] tracking-[-0.03em]">
+              <span className="block text-foreground">The</span>
+              <span className="my-[0.12em] block h-px w-full bg-foreground" aria-hidden />
+              <span className="block text-signal">Mirror</span>
+            </p>
+          </aside>
+        )}
+
+        {/* Extreme-right golden question counter */}
+        {(phase === "chat" || phase === "extracting") && (
+          <aside
+            className="pointer-events-none absolute right-3 top-1/2 z-0 -translate-y-1/2 sm:right-6 lg:right-10"
+            aria-label={`Question ${Math.min(qIndex + 1, activeQuestions.length)} of ${activeQuestions.length}`}
+          >
+            <div className="relative flex h-[clamp(7.5rem,18vw,11rem)] w-[clamp(7.5rem,18vw,11rem)] items-center justify-center rounded-full border-[3px] border-signal">
+              <div
+                aria-hidden
+                className="absolute inset-2 rounded-full border border-signal/25"
+              />
+              <p className="relative font-display text-[clamp(1.75rem,4.5vw,2.75rem)] font-bold leading-none tracking-tight text-signal">
+                <span>
+                  {phase === "extracting"
+                    ? activeQuestions.length
+                    : Math.min(qIndex + 1, activeQuestions.length)}
+                </span>
+                <span className="text-signal/45">/</span>
+                <span>{activeQuestions.length}</span>
+              </p>
+            </div>
+          </aside>
+        )}
+
+        <div className="relative z-10 mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-4 sm:px-6 py-3 sm:py-4">
         <AnimatePresence mode="wait">
           {phase === "chat" || phase === "extracting" ? (
             <motion.div
@@ -577,49 +670,46 @@ function Onboarding() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.4, ease }}
-              className="flex min-h-0 flex-1 flex-col gap-4"
+              className="flex min-h-0 flex-1 flex-col gap-3"
             >
-              <div className="shrink-0">
-                <p className="label-eyebrow text-signal">The Mirror</p>
-                <h1 className="mt-1.5 font-display text-2xl sm:text-3xl font-medium tracking-tight leading-[1.1]">
-                  Tell me who you&apos;re becoming.
-                </h1>
-                <p className="mt-2 text-sm text-muted-foreground max-w-lg line-clamp-2">
-                  Four to six questions. I&apos;ll extract a Declared Self with
-                  observable markers you can confirm before anything is measured.
-                </p>
+              <div className="shrink-0 space-y-2.5">
+                <div className="pl-[min(28vw,8.5rem)] sm:pl-[min(22vw,9.5rem)]">
+                  <h1 className="font-display text-xl sm:text-2xl font-bold tracking-tight leading-[1.15]">
+                    Tell me who you&apos;re becoming.
+                  </h1>
+                </div>
+                <div className="flex items-center gap-2">
+                  {activeQuestions.map((q, i) => (
+                    <div
+                      key={q.id}
+                      className={`h-1 flex-1 rounded-full transition-colors ${
+                        i < answers.length
+                          ? "bg-signal"
+                          : i === qIndex && phase === "chat"
+                            ? "bg-foreground/35"
+                            : "bg-border"
+                      }`}
+                    />
+                  ))}
+                </div>
               </div>
 
-              <div className="flex shrink-0 items-center gap-2">
-                {activeQuestions.map((q, i) => (
-                  <div
-                    key={q.id}
-                    className={`h-1 flex-1 rounded-full transition-colors ${
-                      i < answers.length
-                        ? "bg-signal"
-                        : i === qIndex && phase === "chat"
-                          ? "bg-foreground/30"
-                          : "bg-border"
-                    }`}
-                  />
-                ))}
-              </div>
-
-              <div className="flex min-h-0 flex-1 flex-col rounded-3xl border border-border bg-card/90 backdrop-blur-xl p-4 sm:p-6">
+              {/* Card fills leftover viewport; composer pinned; middle scrolls */}
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card">
                 <div
                   ref={chatScrollRef}
-                  className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-1"
+                  className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain px-4 py-3 sm:px-5"
                 >
                   {messages.map((m) => (
                     <motion.div
                       key={m.id}
-                      initial={{ opacity: 0, y: 8 }}
+                      initial={{ opacity: 0, y: 6 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, ease }}
+                      transition={{ duration: 0.25, ease }}
                       className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
                     >
                       <div
-                        className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                        className={`max-w-[92%] rounded-2xl px-3.5 py-2.5 text-sm font-semibold leading-relaxed ${
                           m.role === "user"
                             ? "bg-foreground text-background rounded-br-md"
                             : "bg-secondary text-foreground rounded-bl-md"
@@ -631,7 +721,7 @@ function Onboarding() {
                   ))}
                   {typing && (
                     <div className="flex justify-start">
-                      <div className="rounded-2xl rounded-bl-md bg-secondary px-4 py-3 font-mono text-xs text-muted-foreground">
+                      <div className="rounded-2xl rounded-bl-md bg-secondary px-3.5 py-2.5 font-mono text-xs text-muted-foreground">
                         Thinking…
                       </div>
                     </div>
@@ -640,34 +730,118 @@ function Onboarding() {
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="rounded-2xl border border-signal/30 bg-signal/5 p-4 font-mono text-xs space-y-2"
+                      className="rounded-xl border border-signal/30 bg-signal/5 p-3.5 font-mono text-xs space-y-1.5"
                     >
                       <p className="text-signal uppercase tracking-[0.16em]">
                         Extracting Declared Self…
                       </p>
                       <p className="text-muted-foreground">
-                        Mapping answers → identity attributes → observable markers →
-                        weights
+                        Mapping answers → identity attributes → markers
                       </p>
                     </motion.div>
                   )}
                 </div>
 
                 {phase === "chat" && !typing && (
-                  <div className="mt-4 shrink-0 space-y-2 border-t border-border pt-4">
-                    <p className="label-eyebrow mb-2">{currentQ.hint}</p>
-                    {currentQ.options.map((opt) => (
-                      <button
-                        key={opt}
-                        onClick={() => selectAnswer(opt)}
-                        className="group w-full text-left rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground transition-all hover:border-signal/50 hover:bg-signal/5"
-                      >
-                        <span className="flex items-center justify-between gap-3">
-                          <span>{opt}</span>
-                          <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </span>
-                      </button>
-                    ))}
+                  <div className="shrink-0 border-t border-border bg-card px-4 py-3 sm:px-5 space-y-2.5">
+                    <div>
+                      <p className="text-base sm:text-lg font-semibold tracking-tight leading-snug">
+                        {currentQ.prompt}
+                      </p>
+                    </div>
+
+                    <div className="max-h-[28vh] space-y-1.5 overflow-y-auto overscroll-contain">
+                      {currentQ.options.map((opt) => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => selectAnswer(opt, "preset")}
+                          className="group w-full text-left rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm text-foreground transition-all hover:border-signal/50 hover:bg-signal/5"
+                        >
+                          <span className="flex items-center justify-between gap-2">
+                            <span className="leading-snug">{opt}</span>
+                            <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <form onSubmit={submitCustomAnswer} className="space-y-2">
+                      <div className="flex items-end gap-2">
+                        <div className="relative min-w-0 flex-1">
+                          <textarea
+                            id="mirror-custom-answer"
+                            ref={textareaRef}
+                            value={customAnswer}
+                            onChange={(e) => {
+                              const next = e.target.value.slice(0, 2000);
+                              setCustomAnswer(next);
+                              speechBaseRef.current = next;
+                            }}
+                            onKeyDown={onCustomKeyDown}
+                            rows={2}
+                            maxLength={2000}
+                            placeholder="Optional — type your own answer here…"
+                            className="min-h-[3rem] max-h-24 w-full resize-none rounded-xl border border-border bg-background px-3.5 py-2.5 pr-14 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/70 outline-none transition-colors focus:border-foreground/25 focus:ring-2 focus:ring-foreground/10"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!listening) {
+                                speechBaseRef.current = customAnswer.trim();
+                              }
+                              toggleListening();
+                            }}
+                            disabled={!speechSupported}
+                            title={
+                              !speechSupported
+                                ? "Voice input not supported in this browser"
+                                : listening
+                                  ? "Stop listening"
+                                  : "Speak your answer"
+                            }
+                            aria-label={listening ? "Stop voice input" : "Start voice input"}
+                            className={`absolute top-1/2 right-2.5 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full transition-colors ${
+                              listening
+                                ? "bg-signal text-white"
+                                : "bg-secondary text-foreground hover:bg-foreground/10"
+                            } disabled:cursor-not-allowed disabled:opacity-40`}
+                          >
+                            {listening ? (
+                              <MicOff className="h-4.5 w-4.5" strokeWidth={2.25} />
+                            ) : (
+                              <Mic className="h-4.5 w-4.5" strokeWidth={2.25} />
+                            )}
+                          </button>
+                        </div>
+                        <div className="flex shrink-0 flex-col items-stretch gap-1.5">
+                          <button
+                            type="button"
+                            onClick={skipQuestion}
+                            disabled={typing}
+                            className="inline-flex items-center justify-center rounded-full border border-border px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground disabled:opacity-40"
+                          >
+                            Skip
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={!canSubmitCustom}
+                            className="inline-flex items-center justify-center gap-1.5 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-colors hover:bg-foreground/90 disabled:opacity-40"
+                          >
+                            Continue
+                            <Send className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      {(listening || speechError) && (
+                        <p className="font-mono text-[10px] text-muted-foreground">
+                          {listening ? "Listening… tap the mic to stop" : ""}
+                          {speechError
+                            ? `${listening ? " · " : ""}${speechError}`
+                            : ""}
+                        </p>
+                      )}
+                    </form>
                   </div>
                 )}
               </div>
@@ -678,21 +852,21 @@ function Onboarding() {
               initial={{ opacity: 0, y: 16, filter: "blur(4px)" }}
               animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
               transition={{ duration: 0.55, ease }}
-              className="flex min-h-0 flex-1 flex-col gap-4"
+              className="flex min-h-0 flex-1 flex-col gap-5"
             >
               <div className="shrink-0">
                 <p className="label-eyebrow text-signal">Did I get you right?</p>
-                <h1 className="mt-1.5 font-display text-2xl sm:text-3xl font-medium tracking-tight leading-[1.1]">
+                <h1 className="mt-2 font-display text-3xl sm:text-4xl font-bold tracking-tight leading-[1.08]">
                   {declared.headline || "Your Declared Self"}
                 </h1>
-                <p className="mt-2 text-sm text-muted-foreground max-w-lg">
+                <p className="mt-3 text-base sm:text-lg text-muted-foreground max-w-2xl leading-relaxed">
                   Confirm this Declared Self. Trellis will measure your behaviour
                   against these markers — nothing changes without your consent.
                 </p>
               </div>
 
               {confirmError && (
-                <div className="shrink-0 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 font-mono text-xs text-destructive">
+                <div className="shrink-0 rounded-2xl border border-destructive/30 bg-destructive/10 p-5 font-mono text-sm text-destructive">
                   {confirmError}
                 </div>
               )}
@@ -702,26 +876,28 @@ function Onboarding() {
                   {declared.attributes.map((attr) => (
                     <div
                       key={attr.id}
-                      className="rounded-3xl border border-border bg-card p-6 space-y-4"
+                      className="rounded-[1.5rem] border border-border bg-card p-6 sm:p-7 space-y-4"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="label-eyebrow">Identity attribute</p>
-                          <h3 className="mt-1 text-lg font-medium">{attr.label}</h3>
+                          <h3 className="mt-1.5 text-xl font-semibold tracking-tight">
+                            {attr.label}
+                          </h3>
                         </div>
-                        <span className="font-mono text-[10px] text-signal border border-signal/30 bg-signal/5 px-2 py-1 rounded-full">
-                          w = {attr.weight}
+                        <span className="font-mono text-[11px] text-signal border border-signal/30 bg-signal/5 px-2.5 py-1 rounded-full">
+                          {Math.round(attr.weight * 100)}%
                         </span>
                       </div>
                       <div>
-                        <p className="label-eyebrow mb-2">Observable markers</p>
-                        <ul className="space-y-2">
+                        <p className="label-eyebrow mb-2.5">Observable markers</p>
+                        <ul className="space-y-2.5">
                           {attr.markers.map((m) => (
                             <li
                               key={m.id}
-                              className="flex items-center gap-2 text-sm text-muted-foreground"
+                              className="flex items-center gap-2.5 text-base text-muted-foreground"
                             >
-                              <Check className="h-3.5 w-3.5 text-signal shrink-0" strokeWidth={2} />
+                              <Check className="h-4 w-4 text-signal shrink-0" strokeWidth={2} />
                               {m.label}
                             </li>
                           ))}
@@ -736,7 +912,7 @@ function Onboarding() {
                 <button
                   onClick={() => void confirmAndEnter()}
                   disabled={confirming || !draftApi}
-                  className="inline-flex items-center gap-2 rounded-full bg-foreground px-7 py-3.5 text-sm font-medium text-background hover:bg-foreground/90 transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-full bg-foreground px-8 py-4 text-base font-semibold text-background hover:bg-foreground/90 transition-colors disabled:opacity-50"
                 >
                   {confirming ? "Confirming…" : "Confirm & enter Trellis"}
                   <ArrowRight className="h-4 w-4" />
@@ -746,6 +922,7 @@ function Onboarding() {
                     setPhase("chat");
                     setQIndex(0);
                     setAnswers([]);
+                    setCustomAnswer("");
                     setDraftApi(null);
                     setDraftDeclared(null);
                     setConfirmError(null);
@@ -757,7 +934,7 @@ function Onboarding() {
                       },
                     ]);
                   }}
-                  className="rounded-full border border-border px-6 py-3.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className="rounded-full border border-border px-7 py-4 text-base text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Edit answers
                 </button>
@@ -765,6 +942,7 @@ function Onboarding() {
             </motion.div>
           )}
         </AnimatePresence>
+        </div>
       </main>
     </div>
   );

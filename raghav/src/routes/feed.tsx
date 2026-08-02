@@ -446,6 +446,13 @@ function GrowthFeed() {
   );
 }
 
+function formatPhoneClock(date: Date) {
+  return date.toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 function PhoneFrame({
   detectorState,
   feedHeightClass,
@@ -477,6 +484,15 @@ function PhoneFrame({
   elevated?: boolean;
   className?: string;
 }) {
+  const [clock, setClock] = useState(() => formatPhoneClock(new Date()));
+
+  useEffect(() => {
+    const tick = () => setClock(formatPhoneClock(new Date()));
+    tick();
+    const id = window.setInterval(tick, 15_000);
+    return () => window.clearInterval(id);
+  }, []);
+
   return (
     <div
       className={`flex min-h-0 flex-col rounded-[2.2rem] border border-border bg-[#1a1a1a] p-2.5 ${
@@ -487,7 +503,9 @@ function PhoneFrame({
     >
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.75rem] bg-white">
         <div className="flex shrink-0 items-center justify-between px-5 pt-2.5 pb-1.5">
-          <span className="font-mono text-[10px] text-foreground">9:41</span>
+          <span className="font-mono text-[10px] text-foreground tabular-nums">
+            {clock}
+          </span>
           <div className="h-5 w-24 rounded-full bg-foreground/90" />
           <span className="font-mono text-[10px] text-foreground">100%</span>
         </div>

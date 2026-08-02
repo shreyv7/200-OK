@@ -27,6 +27,7 @@ def advance_turn(
     user_id: str,
     session_id: str | None,
     message: str,
+    answer_kind: str | None = None,
 ) -> OnboardingTurnResponse:
     if session_id is None:
         session_row = onboarding_repository.create_session(db, user_id)
@@ -42,11 +43,17 @@ def advance_turn(
             done=False,
         )
 
+    if not message.strip():
+        raise ValueError("Answer cannot be empty.")
+
     session_row = onboarding_repository.get_session_for_user(db, session_id, user_id)
     if session_row is None:
         raise ValueError(f"Unknown onboarding session: {session_id}")
 
-    onboarding_repository.append_turn(db, session_id, "user", message)
+    kind = answer_kind if answer_kind in {"preset", "freeform"} else "freeform"
+    onboarding_repository.append_turn(
+        db, session_id, "user", message.strip(), answer_kind=kind
+    )
     turns = onboarding_repository.list_turns(db, session_id)
     state = interview_state_from_db_turns(user_id, turns)
     answered = sum(1 for turn in turns if turn.role == "user")

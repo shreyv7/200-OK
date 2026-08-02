@@ -38,7 +38,7 @@ export function CatalogSyncPanel() {
   const ready = Boolean(status?.enabled);
 
   return (
-    <div className="rounded-2xl border border-border bg-card/90 p-5 font-mono shadow-[0_4px_20px_rgba(17,17,17,0.03)] backdrop-blur-md">
+    <div className="rounded-2xl border border-border bg-card/90 p-5 shadow-[0_4px_20px_rgba(17,17,17,0.03)] backdrop-blur-md">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <h3 className="text-sm font-semibold tracking-tight text-foreground">

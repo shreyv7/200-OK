@@ -88,7 +88,7 @@ export function IntegrationConnectionCard({
   };
 
   return (
-    <div className="relative rounded-2xl border border-border bg-card/90 p-5 font-mono shadow-[0_4px_20px_rgba(17,17,17,0.03)] backdrop-blur-md transition-all duration-200 hover:border-border/80">
+    <div className="relative rounded-2xl border border-border bg-card/90 p-5 shadow-[0_4px_20px_rgba(17,17,17,0.03)] backdrop-blur-md transition-all duration-200 hover:border-border/80">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-start gap-3.5">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-secondary/60 text-foreground">

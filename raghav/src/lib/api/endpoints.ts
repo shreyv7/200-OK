@@ -23,6 +23,7 @@ export function getMe() {
 export function onboardingTurn(body: {
   sessionId?: string | null;
   message?: string;
+  answerKind?: "preset" | "freeform" | null;
 }) {
   return apiFetch<ApiOnboardingTurnResponse>("/identity/onboarding", {
     method: "POST",

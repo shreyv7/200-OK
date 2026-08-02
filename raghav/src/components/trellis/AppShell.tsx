@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   LogOut,
   Rss,
-  ScrollText,
   Settings,
   Users,
 } from "lucide-react";
@@ -15,14 +14,14 @@ import { LatticeMark } from "./Lattice";
 import { CapacitySlider } from "./CapacitySlider";
 import { SimulatorDrawer } from "./SimulatorDrawer";
 import { useTrellis } from "@/lib/trellis/store";
-import { setAuthTokenGetter } from "@/authentication/token";
+import { useAuthSession } from "@/authentication/AuthSession";
+import { resetAuthBridge, setAuthTokenGetter } from "@/authentication/token";
 
 const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/mentors", label: "Experts & Guides", icon: Users },
   { to: "/feed", label: "Growth Feed", icon: Rss },
-  { to: "/ledger", label: "Trust Ledger", icon: ScrollText },
-  { to: "/report", label: "Weekly Report", icon: FileText },
+  { to: "/report", label: "About You", icon: FileText },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
@@ -39,6 +38,7 @@ export function AppShell({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { unlearning, clearUnlearning, calendarPing } = useTrellis();
   const { user } = useUser();
+  const { user: platformUser, setSignedOut } = useAuthSession();
   const { signOut } = useClerk();
   const [simOpen, setSimOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -47,7 +47,9 @@ export function AppShell({
   const handleSignOut = async () => {
     if (signingOut) return;
     setSigningOut(true);
+    resetAuthBridge();
     setAuthTokenGetter(null);
+    setSignedOut();
     document.dispatchEvent(
       new CustomEvent("trellis:set-auth-token", {
         detail: { token: null },
@@ -63,11 +65,14 @@ export function AppShell({
   };
 
   const displayName =
+    platformUser?.fullName ||
     user?.fullName ||
     user?.firstName ||
+    platformUser?.email ||
     user?.primaryEmailAddress?.emailAddress ||
     "Signed in";
   const displaySub =
+    platformUser?.email ||
     user?.primaryEmailAddress?.emailAddress ||
     user?.username ||
     "Trellis member";
@@ -183,13 +188,6 @@ export function AppShell({
 
           <div className="flex items-center gap-4 sm:gap-5">
             <CapacitySlider />
-            <div className="hidden sm:flex items-center gap-1.5 font-mono text-[9.5px] text-muted-foreground">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-signal opacity-40" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-signal" />
-              </span>
-              <span>Engine active</span>
-            </div>
           </div>
         </header>
 

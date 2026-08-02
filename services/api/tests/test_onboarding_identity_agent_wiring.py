@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+import pytest
+
 from app.agents.nodes.identity.node import IdentityAgentNode, interview_state_from_db_turns
 from app.models.onboarding_turn import OnboardingTurn
 from app.providers.llm.fake import FakeLLMProvider
+from app.repositories import onboarding_repository
 from app.services.identity.onboarding_orchestration import advance_turn
 from tests.conftest import ensure_user
 
@@ -51,3 +54,34 @@ def test_advance_turn_end_to_end_uses_agent_policy(db_session) -> None:
         else:
             assert response.done is True
             assert response.draft is not None
+
+
+def test_advance_turn_persists_freeform_answer_kind(db_session) -> None:
+    user_id = "onboard-freeform-user"
+    ensure_user(db_session, user_id)
+    llm = FakeLLMProvider()
+
+    start = advance_turn(db_session, llm, user_id, session_id=None, message="")
+    advance_turn(
+        db_session,
+        llm,
+        user_id,
+        start.sessionId,
+        "I want to ship a consumer AI writing tool for founders",
+        answer_kind="freeform",
+    )
+    turns = onboarding_repository.list_turns(db_session, start.sessionId)
+    user_turns = [t for t in turns if t.role == "user"]
+    assert len(user_turns) == 1
+    assert user_turns[0].answer_kind == "freeform"
+    assert "consumer AI" in user_turns[0].content
+
+
+def test_advance_turn_rejects_empty_answer(db_session) -> None:
+    user_id = "onboard-empty-user"
+    ensure_user(db_session, user_id)
+    llm = FakeLLMProvider()
+    start = advance_turn(db_session, llm, user_id, session_id=None, message="")
+
+    with pytest.raises(ValueError, match="empty"):
+        advance_turn(db_session, llm, user_id, start.sessionId, "   ")

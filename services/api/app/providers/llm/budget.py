@@ -57,3 +57,31 @@ class BudgetedLLMProvider(LLMProvider):
             total_tokens=(usage.total_tokens if usage and usage.total_tokens else 0),
         )
         return result
+
+    def generate_structured_from_image(
+        self,
+        schema: dict[str, Any],
+        prompt: str,
+        image_bytes: bytes,
+        mime_type: str = "image/png",
+        opts: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        from app.repositories import llm_usage_repository
+
+        budget = llm_usage_repository.get_or_create(self._db, self._user_id)
+        if budget.calls_today >= self._daily_call_cap:
+            raise LLMBudgetExceeded(
+                f"User {self._user_id} has reached today's LLM call cap ({self._daily_call_cap})"
+            )
+
+        result = self._inner.generate_structured_from_image(
+            schema, prompt, image_bytes, mime_type, opts
+        )
+
+        usage = self._inner.last_usage
+        llm_usage_repository.record_call(
+            self._db,
+            self._user_id,
+            total_tokens=(usage.total_tokens if usage and usage.total_tokens else 0),
+        )
+        return result

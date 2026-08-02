@@ -10,7 +10,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
-import { ClerkAuthBridge } from "../authentication";
+import { AuthSessionProvider, ClerkAuthBridge } from "../authentication";
 import { clerkAppearance } from "../authentication/clerkAppearance";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -116,7 +116,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&display=swap",
+        /* IBM Plex Mono for eyebrows/data; EB Garamond italic for ornamental display; Great Vibes for script. Satoshi is self-hosted. */
+        href: "https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@1,400;1,500&family=Great+Vibes&family=IBM+Plex+Mono:wght@400;500&display=swap",
       },
     ],
   }),
@@ -176,13 +177,15 @@ function RootComponent() {
       appearance={clerkAppearance as never}
     >
       <QueryClientProvider client={queryClient}>
-        <ClerkAuthBridge />
-        <TrellisProvider>
-          <RibbonBackground />
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
-          <Toaster />
-        </TrellisProvider>
+        <AuthSessionProvider>
+          <ClerkAuthBridge />
+          <TrellisProvider>
+            <RibbonBackground />
+            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+            <Outlet />
+            <Toaster />
+          </TrellisProvider>
+        </AuthSessionProvider>
       </QueryClientProvider>
     </ClerkProvider>
   );

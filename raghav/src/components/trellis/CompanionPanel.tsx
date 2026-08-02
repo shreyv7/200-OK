@@ -3,7 +3,6 @@ import { useAuth } from "@clerk/react";
 import { CheckCircle2, ExternalLink, Loader2, Puzzle } from "lucide-react";
 import { toast } from "sonner";
 
-const USERSCRIPT_URL = "http://localhost:8002/tampermonkey/trellis-telemetry.user.js";
 const PING_INTERVAL_MS = 2500;
 
 type CompanionState = {
@@ -11,6 +10,13 @@ type CompanionState = {
   version: string | null;
   checking: boolean;
 };
+
+function companionInstallUrl() {
+  if (typeof window !== "undefined") {
+    return `${window.location.origin}/tampermonkey/trellis-telemetry.user.js`;
+  }
+  return "http://localhost:8080/tampermonkey/trellis-telemetry.user.js";
+}
 
 function broadcastAuthToken(token: string) {
   document.dispatchEvent(
@@ -87,32 +93,21 @@ export function CompanionPanel() {
 
   useEffect(() => {
     if (!isSignedIn || !state.installed) return;
-
-    let cancelled = false;
-    const syncToken = async () => {
+    void (async () => {
       try {
         const token = await getToken();
-        if (!cancelled && token) broadcastAuthToken(token);
+        if (token) broadcastAuthToken(token);
       } catch {
-        // Non-blocking: Companion will retry on the next interval.
+        /* retry via ClerkAuthBridge */
       }
-    };
-
-    void syncToken();
-    const timer = window.setInterval(() => {
-      void syncToken();
-    }, 60_000);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
+    })();
   }, [getToken, isSignedIn, state.installed]);
 
   const handleInstall = () => {
-    window.open(USERSCRIPT_URL, "_blank", "noopener,noreferrer");
-    toast.message("Tampermonkey should open an Install dialog. Click Install once.");
+    window.open(companionInstallUrl(), "_blank", "noopener,noreferrer");
+    toast.message("Click Install in Tampermonkey, then refresh.");
     setTimeout(() => pingCompanion(), 1500);
+    setTimeout(() => pingCompanion(), 4000);
   };
 
   return (
@@ -123,48 +118,46 @@ export function CompanionPanel() {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-display text-base text-foreground">Trellis Companion</h3>
+            <h3 className="text-base font-semibold tracking-tight text-foreground">
+              Browser tracking
+            </h3>
             {state.checking ? (
-              <span className="inline-flex items-center gap-1 font-mono text-[11px] text-muted-foreground">
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                 <Loader2 className="h-3 w-3 animate-spin" /> Checking
               </span>
             ) : state.installed ? (
-              <span className="inline-flex items-center gap-1 font-mono text-[11px] text-emerald-600">
-                <CheckCircle2 className="h-3 w-3" /> Installed{state.version ? ` v${state.version}` : ""}
+              <span className="inline-flex items-center gap-1 text-xs text-emerald-600">
+                <CheckCircle2 className="h-3 w-3" /> Live
               </span>
             ) : (
-              <span className="font-mono text-[11px] text-muted-foreground">Not detected</span>
+              <span className="text-xs text-muted-foreground">Not set up</span>
             )}
           </div>
-          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-            One-click Tampermonkey userscript that streams Instagram, Facebook, and YouTube browsing
-            into your Evidence Pipeline — scrolls, dwell time, shorts/reels, and focus-drift signals.
-          </p>
 
-          <ol className="mt-3 space-y-1 font-mono text-[11px] text-muted-foreground">
-            <li>1. Install the Tampermonkey browser extension if you do not have it.</li>
-            <li>2. Click Enable Behavioral Tracking and press Install once.</li>
-            <li>3. Browse Instagram / YouTube / Facebook — Trellis ingests events automatically.</li>
-          </ol>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={handleInstall}
-              className="inline-flex items-center gap-2 rounded-xl bg-foreground px-3 py-2 font-mono text-xs text-background transition hover:opacity-90"
-            >
-              Enable Behavioral Tracking
-              <ExternalLink className="h-3.5 w-3.5" />
-            </button>
-            <a
-              href="https://www.tampermonkey.net/"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 font-mono text-xs text-foreground transition hover:bg-secondary/50"
-            >
-              Get Tampermonkey
-            </a>
-          </div>
+          {state.installed ? (
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Keep Trellis open while you browse.
+            </p>
+          ) : (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleInstall}
+                className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90"
+              >
+                Install Companion
+                <ExternalLink className="h-3.5 w-3.5" />
+              </button>
+              <a
+                href="https://www.tampermonkey.net/"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm text-muted-foreground transition hover:text-foreground hover:bg-secondary/50"
+              >
+                Get Tampermonkey
+              </a>
+            </div>
+          )}
         </div>
       </div>
     </div>

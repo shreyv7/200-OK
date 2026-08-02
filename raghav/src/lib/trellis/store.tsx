@@ -4,9 +4,11 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import { useAuthSession } from "@/authentication/AuthSession";
 import {
   createEvidence,
   getActiveStack,
@@ -361,24 +363,51 @@ function hypothesisFromCard(card: InterventionCard): string {
   return card.hypothesisId ?? card.id;
 }
 
-const COMPLETED_STACK_KEY = "trellis_completed_stack_ids";
+function completedStackKey(userId: string) {
+  return `trellis_completed_stack_ids:${userId}`;
+}
 
-function loadCompletedStackIds(): string[] {
+function loadCompletedStackIds(userId: string | null): string[] {
+  if (!userId || typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(COMPLETED_STACK_KEY);
+    const raw = localStorage.getItem(completedStackKey(userId));
     return raw ? (JSON.parse(raw) as string[]) : [];
   } catch {
     return [];
   }
 }
 
-function persistCompletedStackIds(ids: string[]) {
+function persistCompletedStackIds(userId: string | null, ids: string[]) {
+  if (!userId || typeof window === "undefined") return;
   try {
-    localStorage.setItem(COMPLETED_STACK_KEY, JSON.stringify(ids.slice(-100)));
+    localStorage.setItem(completedStackKey(userId), JSON.stringify(ids.slice(-100)));
   } catch {
     /* ignore quota errors */
   }
 }
+
+const EMPTY_GAP: Gap = {
+  score: 0,
+  alignment: 0,
+  createRatio: 0,
+  consumeRatio: 0,
+  driftRatio: 0,
+  breakdown: [],
+};
+
+const EMPTY_DECLARED: DeclaredSelf = {
+  id: "",
+  name: "",
+  role: "",
+  attributes: [],
+};
+
+const EMPTY_BOTTLENECK: BottleneckView = {
+  name: "—",
+  diagnosis: "",
+  confidence: "low",
+  evidence: [],
+};
 
 function evidenceShapeForStackElement(element: StackElement): {
   type: string;
@@ -417,23 +446,26 @@ function familyForStackElement(element: StackElement): string {
 const TrellisContext = createContext<TrellisContextType>(defaultContext);
 
 export function TrellisProvider({ children }: { children: ReactNode }) {
-  const [capacity, setCapacityState] = useState(75);
+  const { status: authStatus, user: platformUser } = useAuthSession();
+  const platformUserId = platformUser?.id ?? null;
+  const platformUserIdRef = useRef<string | null>(null);
+  platformUserIdRef.current = platformUserId;
+
+  const [capacity, setCapacityState] = useState(100);
   const [unlearning, setUnlearning] = useState<Unlearning | null>(null);
   const [unlearned, setUnlearned] = useState(false);
   const [dismissalCount, setDismissalCount] = useState(0);
-  const [events, setEvents] = useState<EvidenceEvent[]>(defaultContext.events);
+  const [events, setEvents] = useState<EvidenceEvent[]>([]);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
-  const [gap, setGap] = useState<Gap>(defaultContext.gap);
-  const [stack, setStack] = useState<StackElement[]>(defaultContext.stack);
-  const [declaredSelf, setDeclaredSelf] = useState<DeclaredSelf>(defaultContext.declaredSelf);
-  const [bottleneck, setBottleneck] = useState<BottleneckView>(defaultContext.bottleneck);
+  const [gap, setGap] = useState<Gap>(EMPTY_GAP);
+  const [stack, setStack] = useState<StackElement[]>([]);
+  const [declaredSelf, setDeclaredSelf] = useState<DeclaredSelf>(EMPTY_DECLARED);
+  const [bottleneck, setBottleneck] = useState<BottleneckView>(EMPTY_BOTTLENECK);
   const [liveReady, setLiveReady] = useState(false);
   const [identityUpdated, setIdentityUpdated] = useState(false);
-  const [pulsedStruts, setPulsedStruts] = useState<string[]>(defaultContext.pulsedStruts);
+  const [pulsedStruts, setPulsedStruts] = useState<string[]>([]);
   const [selectedPersona, setSelectedPersona] = useState<SelectedPersona>(PERSONA_CATALOGUE[0]!);
-  const [completedStackIds, setCompletedStackIds] = useState<string[]>(() =>
-    typeof window === "undefined" ? [] : loadCompletedStackIds(),
-  );
+  const [completedStackIds, setCompletedStackIds] = useState<string[]>([]);
 
   const selectPersona = useCallback((id: string) => {
     const found = PERSONA_CATALOGUE.find((p) => p.id === id);
@@ -444,7 +476,7 @@ export function TrellisProvider({ children }: { children: ReactNode }) {
     setCompletedStackIds((prev) => {
       if (prev.includes(id)) return prev;
       const next = [...prev, id];
-      persistCompletedStackIds(next);
+      persistCompletedStackIds(platformUserIdRef.current, next);
       return next;
     });
     setStack((prev) => prev.filter((el) => el.id !== id));
@@ -455,7 +487,29 @@ export function TrellisProvider({ children }: { children: ReactNode }) {
     [unlearned],
   );
 
+  const resetLocalSessionState = useCallback(() => {
+    setLiveReady(false);
+    setCapacityState(100);
+    setUnlearning(null);
+    setUnlearned(false);
+    setDismissalCount(0);
+    setEvents([]);
+    setLedger([]);
+    setGap(EMPTY_GAP);
+    setStack([]);
+    setDeclaredSelf(EMPTY_DECLARED);
+    setBottleneck(EMPTY_BOTTLENECK);
+    setPulsedStruts([]);
+    setCompletedStackIds([]);
+    setIdentityUpdated(false);
+  }, []);
+
   const refreshLiveData = useCallback(async () => {
+    const userId = platformUserIdRef.current;
+    if (!userId) {
+      setLiveReady(false);
+      return;
+    }
     try {
       const [summary, variants, active, entries, adaptations] = await Promise.all([
         getDashboardSummary().catch(() => null),
@@ -473,7 +527,7 @@ export function TrellisProvider({ children }: { children: ReactNode }) {
         setBottleneck(mapped.bottleneck);
       }
 
-      const doneIds = loadCompletedStackIds();
+      const doneIds = loadCompletedStackIds(userId);
       setCompletedStackIds(doneIds);
       const mappedStack =
         variants && Object.keys(variants).length > 0
@@ -495,9 +549,16 @@ export function TrellisProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Load Postgres-backed data only after Clerk JWT → /me has provisioned this user.
   useEffect(() => {
+    if (authStatus === "signed_out" || authStatus === "bootstrapping") {
+      resetLocalSessionState();
+      return;
+    }
+    if (authStatus !== "ready" || !platformUserId) return;
+    setCompletedStackIds(loadCompletedStackIds(platformUserId));
     void refreshLiveData();
-  }, [refreshLiveData]);
+  }, [authStatus, platformUserId, refreshLiveData, resetLocalSessionState]);
 
   const setCapacity = useCallback((value: number) => {
     setCapacityState(value);

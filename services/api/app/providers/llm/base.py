@@ -45,3 +45,16 @@ class LLMProvider(ABC):
       opts: dict[str, Any] | None = None,
   ) -> dict[str, Any]:
       """Return JSON-compatible structured output validated against schema."""
+
+  def generate_structured_from_image(
+      self,
+      schema: dict[str, Any],
+      prompt: str,
+      image_bytes: bytes,
+      mime_type: str = "image/png",
+      opts: dict[str, Any] | None = None,
+  ) -> dict[str, Any]:
+      """Multimodal structured generation (OCR / vision). Default unsupported."""
+      raise NotImplementedError(
+          f"{type(self).__name__} does not support image/vision structured generation"
+      )

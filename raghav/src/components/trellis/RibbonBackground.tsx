@@ -1,7 +1,6 @@
 /*
- * Site-wide ambient background: iridescent metallic ribbons drifting slowly
- * over the white canvas. Motion is CSS-driven so it starts immediately and
- * doesn't depend on Framer path morphing.
+ * Site-wide ambient background: soft grey / charcoal ribbons drifting
+ * slowly over the white canvas. Motion is CSS-driven.
  */
 
 export function RibbonBackground() {
@@ -14,29 +13,28 @@ export function RibbonBackground() {
         className="h-full w-full"
         viewBox="0 0 1440 900"
         preserveAspectRatio="xMidYMid slice"
-        style={{ filter: "blur(22px) saturate(1.45)" }}
+        style={{ filter: "blur(26px) saturate(0.2)" }}
       >
         <defs>
           <linearGradient id="ribbon-a" x1="0%" y1="0%" x2="100%" y2="20%">
-            <stop offset="0%" stopColor="#38BDF8" />
-            <stop offset="35%" stopColor="#6366F1" />
-            <stop offset="65%" stopColor="#E879F9" />
-            <stop offset="100%" stopColor="#FB7185" />
+            <stop offset="0%" stopColor="#111111" stopOpacity="0.22" />
+            <stop offset="40%" stopColor="#3B3B3B" stopOpacity="0.16" />
+            <stop offset="100%" stopColor="#707070" stopOpacity="0.12" />
           </linearGradient>
           <linearGradient id="ribbon-b" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#A5B4FC" />
-            <stop offset="50%" stopColor="#22D3EE" />
-            <stop offset="100%" stopColor="#F472B6" />
+            <stop offset="0%" stopColor="#2A2A2A" stopOpacity="0.14" />
+            <stop offset="50%" stopColor="#5A5A5A" stopOpacity="0.1" />
+            <stop offset="100%" stopColor="#111111" stopOpacity="0.18" />
           </linearGradient>
           <linearGradient id="ribbon-c" x1="0%" y1="0%" x2="100%" y2="10%">
-            <stop offset="0%" stopColor="#FBBF24" />
-            <stop offset="50%" stopColor="#F472B6" />
-            <stop offset="100%" stopColor="#60A5FA" />
+            <stop offset="0%" stopColor="#4A4A4A" stopOpacity="0.12" />
+            <stop offset="50%" stopColor="#111111" stopOpacity="0.2" />
+            <stop offset="100%" stopColor="#6B6B6B" stopOpacity="0.1" />
           </linearGradient>
           <linearGradient id="ribbon-d" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#34D399" />
-            <stop offset="50%" stopColor="#38BDF8" />
-            <stop offset="100%" stopColor="#A78BFA" />
+            <stop offset="0%" stopColor="#111111" stopOpacity="0.16" />
+            <stop offset="50%" stopColor="#3B3B3B" stopOpacity="0.12" />
+            <stop offset="100%" stopColor="#8A8A8A" stopOpacity="0.08" />
           </linearGradient>
         </defs>
 
@@ -47,7 +45,7 @@ export function RibbonBackground() {
             strokeWidth={140}
             strokeLinecap="round"
             fill="none"
-            opacity={0.55}
+            opacity={0.7}
           />
         </g>
 
@@ -58,7 +56,7 @@ export function RibbonBackground() {
             strokeWidth={72}
             strokeLinecap="round"
             fill="none"
-            opacity={0.48}
+            opacity={0.55}
           />
         </g>
 
@@ -69,7 +67,7 @@ export function RibbonBackground() {
             strokeWidth={110}
             strokeLinecap="round"
             fill="none"
-            opacity={0.42}
+            opacity={0.6}
           />
         </g>
 
@@ -80,12 +78,12 @@ export function RibbonBackground() {
             strokeWidth={150}
             strokeLinecap="round"
             fill="none"
-            opacity={0.4}
+            opacity={0.5}
           />
         </g>
       </svg>
 
-      <div className="absolute inset-0 bg-white/20" />
+      <div className="absolute inset-0 bg-white/35" />
     </div>
   );
 }

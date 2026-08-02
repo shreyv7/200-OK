@@ -30,8 +30,13 @@ export interface ApiOnboardingTurnResponse {
 
 export interface ApiMeUser {
   id: string;
+  clerkId?: string | null;
   email?: string | null;
   fullName?: string | null;
+  profileImage?: string | null;
+  lastLoginAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string | null;
   capacity?: number;
 }
 

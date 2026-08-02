@@ -43,7 +43,7 @@ function resultBlurb(payload: Record<string, unknown>): string {
 
 export function VectorSearchBar() {
   const [query, setQuery] = useState("");
-  const [collection, setCollection] = useState("all");
+  const collection = "all";
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<SemanticSearchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -93,19 +93,6 @@ export function VectorSearchBar() {
           />
         </div>
 
-        <select
-          value={collection}
-          onChange={(e) => setCollection(e.target.value)}
-          aria-label="Search scope"
-          className="rounded-2xl border border-border bg-card/90 px-3.5 py-3 font-mono text-xs text-foreground shadow-[0_4px_20px_rgba(17,17,17,0.03)] backdrop-blur-md focus:border-signal/40 focus:outline-none focus:ring-2 focus:ring-signal/20"
-        >
-          <option value="all">Everything</option>
-          <option value="catalog_stories">Growth Stories</option>
-          <option value="catalog_tools">Tools</option>
-          <option value="catalog_mentors">Mentors</option>
-          <option value="partner_profiles">Growth Partners</option>
-        </select>
-
         <button
           type="submit"
           disabled={loading || !query.trim()}
@@ -139,8 +126,7 @@ export function VectorSearchBar() {
 
           {response.results.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border bg-card/40 px-6 py-10 text-center text-sm text-muted-foreground">
-              No strong matches yet. Try a different phrasing, or broaden the
-              scope to Everything.
+              No strong matches yet. Try a different phrasing.
             </div>
           ) : (
             <ul className="grid grid-cols-1 gap-3">
