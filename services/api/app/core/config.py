@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     llm_provider: Literal["fake", "gemini", "bedrock"] = "fake"
     gemini_api_key: str | None = None
     gemini_api_keys: str = ""
-    gemini_model: str = "gemini-2.5-flash-lite"
+    gemini_model: str = "gemini-3.5-flash-lite"
     bedrock_region: str | None = None
     bedrock_model_id: str | None = None
     bedrock_failover_enabled: bool = False
