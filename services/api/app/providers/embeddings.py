@@ -52,8 +52,8 @@ class FakeEmbeddingProvider(EmbeddingProvider):
 class GeminiEmbeddingProvider(EmbeddingProvider):
     """Google Gemini text embeddings via google.genai.
 
-    Uses gemini-embedding-001 (3072-dim) by default. Callers should treat
-    raised errors as hard fails and reindex after credentials/model are fixed.
+    Uses gemini-embedding-001 (3072-dim) by default. Rotates keys across the
+    pool and retries on rate limits or API errors.
     """
 
     DEFAULT_DIMS = 3072
@@ -64,35 +64,53 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
         self._api_keys = api_keys
         self._model = model
         self.dims = self.DEFAULT_DIMS
-        self._clients: list[object] = []
+        self._clients: list[object] | None = None
         self._next = 0
 
-    def _client(self):
-        if not self._clients:
+    def _get_clients(self) -> list[object]:
+        if self._clients is None:
             from google import genai
 
             self._clients = [genai.Client(api_key=key) for key in self._api_keys]
-        client = self._clients[self._next % len(self._clients)]
-        self._next += 1
-        return client
+        return self._clients
+
+    def _embed_single(self, text: str) -> list[float]:
+        clients = self._get_clients()
+        last_exc: Exception | None = None
+        start = self._next
+        self._next = (self._next + 1) % len(clients)
+        order = clients[start:] + clients[:start]
+
+        for client in order:
+            try:
+                result = client.models.embed_content(model=self._model, contents=text)
+                embedding = None
+                if hasattr(result, "embeddings") and result.embeddings:
+                    embedding = result.embeddings[0].values
+                elif hasattr(result, "embedding") and result.embedding is not None:
+                    embedding = getattr(result.embedding, "values", result.embedding)
+                if embedding is None:
+                    raise RuntimeError(
+                        f"Gemini embedding response missing vector for model={self._model}"
+                    )
+                return [float(v) for v in embedding]
+            except Exception as exc:
+                last_exc = exc
+                logger.warning(
+                    "Gemini embedding attempt failed for model=%s: %s", self._model, exc
+                )
+                continue
+
+        if last_exc is not None:
+            raise RuntimeError(f"All Gemini embedding API keys exhausted: {last_exc}") from last_exc
+        raise RuntimeError("No healthy Gemini API key available for embedding")
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
-        client = self._client()
         vectors: list[list[float]] = []
-        # google.genai embed_content accepts one content string per call in
-        # stable SDK shapes; batch manually for predictable dims.
         for text in texts:
-            result = client.models.embed_content(model=self._model, contents=text)
-            embedding = None
-            if hasattr(result, "embeddings") and result.embeddings:
-                embedding = result.embeddings[0].values
-            elif hasattr(result, "embedding") and result.embedding is not None:
-                embedding = getattr(result.embedding, "values", result.embedding)
-            if embedding is None:
-                raise RuntimeError(f"Gemini embedding response missing vector for model={self._model}")
-            vector = [float(v) for v in embedding]
+            vector = self._embed_single(text)
             self.dims = len(vector)
             vectors.append(vector)
         return vectors

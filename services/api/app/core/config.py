@@ -58,11 +58,8 @@ class Settings(BaseSettings):
     # separated. Combined with gemini_api_key (kept for back-compat single-
     # key config) via gemini_api_key_pool() below.
     gemini_api_keys: str = ""
-    # gemini-1.5-flash 404s (retired). gemini-2.0-flash loads but returned
-    # 429 RESOURCE_EXHAUSTED (limit: 0) on every tested key. gemini-2.5-flash-lite
-    # is the first model confirmed with real working quota — verified via
-    # a full live onboarding extraction round-trip (docs/work.md B1/B6).
-    gemini_model: str = "gemini-2.5-flash-lite"
+    # Default from origin/rotation; override via GEMINI_MODEL in .env as needed.
+    gemini_model: str = "gemini-3.5-flash-lite"
     bedrock_region: str | None = None
     bedrock_model_id: str | None = None
     # Off by default (docs/work.md B3 ground rule: "if we don't buy
@@ -78,15 +75,19 @@ class Settings(BaseSettings):
 
     def gemini_api_key_pool(self) -> list[str]:
         """Ordered, de-duplicated key pool: gemini_api_key first (back-compat
-        single-key config), then gemini_api_keys (comma-separated rotation
-        pool, docs/work.md B2)."""
+        single-key or comma-separated config), then gemini_api_keys
+        (comma-separated rotation pool, docs/work.md B2)."""
         pool: list[str] = []
         if self.gemini_api_key:
-            pool.append(self.gemini_api_key)
-        for raw in self.gemini_api_keys.split(","):
-            key = raw.strip()
-            if key and key not in pool:
-                pool.append(key)
+            for raw in self.gemini_api_key.split(","):
+                key = raw.strip()
+                if key and key not in pool:
+                    pool.append(key)
+        if self.gemini_api_keys:
+            for raw in self.gemini_api_keys.split(","):
+                key = raw.strip()
+                if key and key not in pool:
+                    pool.append(key)
         return pool
 
     # SearchProvider DI (milestones.md M4). Defaults to the deterministic

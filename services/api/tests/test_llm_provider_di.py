@@ -40,11 +40,12 @@ def test_gemini_with_api_key_resolves_real_provider() -> None:
 
 def test_gemini_api_key_pool_combines_and_dedupes() -> None:
     """B2 (docs/work.md): GEMINI_API_KEY and GEMINI_API_KEYS combine into
-    one ordered, de-duplicated rotation pool."""
+    one ordered, de-duplicated rotation pool. GEMINI_API_KEY itself may be
+    comma-separated (origin/rotation)."""
     settings = Settings(
-        gemini_api_key="key-a", gemini_api_keys=" key-b , key-a ,key-c,,key-b "
+        gemini_api_key="key-a, key-d", gemini_api_keys=" key-b , key-a ,key-c,,key-b "
     )
-    assert settings.gemini_api_key_pool() == ["key-a", "key-b", "key-c"]
+    assert settings.gemini_api_key_pool() == ["key-a", "key-d", "key-b", "key-c"]
 
 
 def test_gemini_with_key_pool_resolves_provider_with_all_slots() -> None:

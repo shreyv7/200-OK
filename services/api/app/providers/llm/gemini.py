@@ -141,6 +141,13 @@ class GeminiLLMProvider(LLMProvider):
                     slot.cooldown_until = now + _INVALID_KEY_COOLDOWN_SECONDS
                     continue
                 raise
+            except Exception as exc:
+                # Transient SDK/network failures: cool the slot and try the next key.
+                slot.failure_count += 1
+                slot.last_error = str(exc)
+                last_exc = exc
+                slot.cooldown_until = now + _RATE_LIMIT_COOLDOWN_SECONDS
+                continue
             else:
                 slot.success_count += 1
                 usage = getattr(response, "usage_metadata", None)
