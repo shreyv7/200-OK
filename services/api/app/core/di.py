@@ -22,11 +22,12 @@ def get_llm_provider(settings: Settings = Depends(get_settings)) -> LLMProvider:
     """Select the configured LLMProvider. Defaults to fake — never requires
     live credentials unless LLM_PROVIDER is explicitly set."""
     if settings.llm_provider == "gemini":
-        if not settings.gemini_api_key:
-            raise RuntimeError("LLM_PROVIDER=gemini requires GEMINI_API_KEY to be set")
+        api_keys = settings.gemini_api_key_pool()
+        if not api_keys:
+            raise RuntimeError("LLM_PROVIDER=gemini requires GEMINI_API_KEY or GEMINI_API_KEYS to be set")
         from app.providers.llm.gemini import GeminiLLMProvider
 
-        return GeminiLLMProvider(api_key=settings.gemini_api_key, model=settings.gemini_model)
+        return GeminiLLMProvider(api_keys=api_keys, model=settings.gemini_model)
 
     if settings.llm_provider == "bedrock":
         from app.providers.llm.bedrock import BedrockLLMProvider
